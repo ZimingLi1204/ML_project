@@ -1,3 +1,4 @@
 /data*
 /pretrain_model
 /.DS_Store
+/segment-anything
