@@ -7,8 +7,8 @@ class Mydataset(Dataset):
     def __init__(self, mode: torch.tensor, data : torch.tensor , label: 'None|torch.tensor'):
         '''
         mode: train/val/test
-        data: N * k * 192 * 192.
-        label: 每个data的groundtruth mask, N * k * 192 * 192
+        data: N * imgsize * imgsize.
+        label: 每个data的groundtruth mask, N * imgsize * imgsize
         '''
         self.mode = mode
         self.data = data
