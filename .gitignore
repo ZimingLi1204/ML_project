@@ -2,3 +2,9 @@
 /pretrain_model
 /.DS_Store
 /segment-anything
+/segment-anything
+/pre_processed_data1_缺部分trainset
+/dataloader
+/data1
+test.py
+log
