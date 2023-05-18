@@ -1,4 +1,7 @@
 import sys
+
+import torch
+
 sys.path.append("..")
 from segment_anything import sam_model_registry, SamPredictor
 from Task2.data import Mydataset
@@ -18,8 +21,19 @@ def test(predictor, dataset : Mydataset):
 
     gen_mask_array = np.zeros([0, 512, 512])
 
-    for img, gt_mask, promt, promt_type in dataset:
-        # 加载图片   相同的图片可以不重复加载，提升代码运行速度
+
+    for index in range(len(dataset)):
+
+        # 这里不确定Mydataset __get_item__方法是否会保持数据集原本顺序
+        img = dataset.img[index, :, :]
+        gt_mask = dataset.mask[index, :, :]
+        promt_type = dataset.promt_type
+        promt = DT.get_promt(img, gt_mask, promt_type)
+
+        # 加载图片
+        # sam模型的输入需要img转化成3通道
+        img = img.reshape(-1, 512, 512)
+        img = img.repeat(3, axis=0).transpose(1, 2, 0)
         predictor.set_image(img)
 
         '''The output masks in CxHxW format, where C is the
@@ -45,8 +59,13 @@ def test(predictor, dataset : Mydataset):
         else:
             raise Exception
 
-        gen_mask_array = np.append(gen_mask_array, mask.reshape(-1, mask.shape[0], mask.shape[1]), axis=0)
+        # multimask_output设为 False, 对每个img只输出1个mask
+        assert mask.shape == (1, 512, 512)
+
+        gen_mask_array = np.append(gen_mask_array, mask, axis=0)
         print(gen_mask_array.shape)
+
+    return gen_mask_array
 
 if __name__ == "__main__":
     sam_checkpoint = "pretrain_model/sam_vit_h_4b8939.pth"
@@ -64,8 +83,14 @@ if __name__ == "__main__":
     print("dataset loaded______________________________________________________")
 
     gen_mask = test(predictor=predictor, dataset=dataset)
-    
+
+    if not os.path.exists("./result"):
+        os.mkdir("result")
+    save_path = "result/mask_generated_from_testset"
+    np.savez_compressed(save_path, mask=gen_mask)
+    print("result saved in ({}) _____________________".format(save_path))
+
     ###TODO###
     # evaluation metrics
-    # return eval_mDice(mask, gt_mask)
+    # return eval_mDice(gen_mask, gt_mask)
 
