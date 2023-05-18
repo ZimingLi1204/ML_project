@@ -6,7 +6,7 @@ import Task2.data as DT
 import cv2
 import numpy as np
 import os
-
+import Task1.metrics
 
 
 def test(predictor, dataset : Mydataset):
@@ -64,7 +64,8 @@ if __name__ == "__main__":
     print("dataset loaded______________________________________________________")
 
     gen_mask = test(predictor=predictor, dataset=dataset)
-
+    
     ###TODO###
     # evaluation metrics
     # return eval_mDice(mask, gt_mask)
+
