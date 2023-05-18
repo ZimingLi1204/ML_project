@@ -1,0 +1,27 @@
+random_seed: 9999
+debug: False
+# use_wandb: False
+test: False
+device: cuda
+
+data:
+  data_root: "data"
+  split_ratio: 0.2
+  img_size: 192
+
+train:
+  use_tensorboard: True
+  log_dir: 'log/debug'
+  learning_rate: 1.e-3
+  optimizer: 'Adam'
+  batch_size: 64
+  weight_decay: 1.e-3
+  loss: 'MSE'
+  max_epoch: 100
+  
+
+test:
+  batch_size: 64
+
+model:
+  model_type: vit_h
