@@ -4,7 +4,7 @@ import torch
 
 class Mydataset(Dataset):
 
-    def __init__(self, mode: torch.tensor, data : torch.tensor , label: 'None|torch.tensor'):
+    def __init__(self, mode: torch.tensor, data : torch.tensor , label: 'None|torch.tensor', index: torch.tensor):
         '''
         mode: train/val/test
         data: N * imgsize * imgsize.
@@ -13,13 +13,9 @@ class Mydataset(Dataset):
         self.mode = mode
         self.data = data
         self.label = label
-        ###这里还要给每个data赋予一个标记, 来记录这个2d数据是属于哪一个3d数据的.
-        self.numberic_label = torch.arange(data.shape[0]).repeat(data.shape[1], 1)
-
-        #所有data reshape成N' * 192 * 192
-        self.data = self.data.reshape(-1, data.shape[2], data.shape[3])
-        if mode != 'test':
-            self.label = self.label.reshape(-1, label.shape[2], label.shape[3])
+        self.index = index
+        assert (self.data.shape[0] == self.label.shape[0])
+        assert (self.data.shape[0] == self.index.shape[0])
 
     def __len__(self):
         
@@ -67,20 +63,24 @@ def load_train_data_from_dir(data_dir, label_dir) -> tuple(Mydataset, Mydataset)
     val_data = None
     train_label = None
     val_label = None
+    train_index = None ###每个2d图片对应的3d图片的index
+    val_index = None ###每个2d图片对应的3d图片的index
 
-    mydataset_train = Mydataset(mode='train',data=train_data, label = train_label)
-    mydataset_val = Mydataset(mode='train', data=val_data, label = val_label)
+    mydataset_train = Mydataset(mode='train',data=train_data, label = train_label, index=train_index)
+    mydataset_val = Mydataset(mode='train', data=val_data, label = val_label, index = val_index)
 
     return mydataset_train, mydataset_val
 
 
 def load_test_data_from_dir(data_dir) -> Mydataset:
+
     ###TODO###
     #根据路径提取并处理数据, 生成测试集, 无label
 
     test_data = None
     test_label = None #fix, 不用修改
+    test_index = None ###每个2d图片对应的3d图片的index
 
-    mydataset_test = Mydataset(mode='test', data=test_data, label=test_label)
+    mydataset_test = Mydataset(mode='test', data=test_data, label=test_label, index=test_index)
 
     return mydataset_test

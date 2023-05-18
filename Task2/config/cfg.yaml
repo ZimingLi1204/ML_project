@@ -25,7 +25,8 @@ model:
 data:
   data_root: "data"
   split_ratio: 0.2
-  img_size: 192
+  img_size: [512, 512]
+  input_size: [1024, 1024]
 
 
      
