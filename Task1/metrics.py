@@ -7,7 +7,7 @@ mask_offset = 1
 data_size = np.int32(1)
 layer_size = 12
 
-mask_generated = np.load('data1/train/label/label0001.nii.gz_61.npy')
+mask_generated = np.load('data1/train/label/label0001.nii.gz_101.npy')
 test_set = np.load('pre_processed_data1_缺部分trainset/pre_processed_dataset1_test.npz')
 mask_groundtruth = test_set["mask"]
 
@@ -17,13 +17,16 @@ slice = np.int32(info["slice_id"])
 CT_idx = np.int32(info["name"])
 CT_idx = CT_idx.reshape(2484)
 case_num = 29
-listp = np.zeros(10)
-#listp[0] = 0
-j = 1
-for i in range (2483):
-    if CT_idx[i] + 1 == CT_idx[i + 1]:
-        listp[j] = i
-        j += 1
+listp = [0, 466, 949, 1431, 1877, 2190, 2483, 0]
+
+#j = 1
+#i = 0
+#for i in range (2483):
+#    if CT_idx[i] + 1 == CT_idx[i + 1]:
+#        listp[j] = i
+#        j += 1
+#listp[j] = i+1
+print(listp)
 
 def dice_coeff(pred, target):
     smooth = 1.
@@ -54,7 +57,7 @@ def dice_coefficient(y_true, y_pred):
 
 sumdice = float(0)
 for i in range (1, 14):
-    organlist = np.where(cate[listp[0]:listp[1]] == i)
+    organlist = np.where(cate[listp[case_num-29]:listp[case_num-28]] == i)
     mask_organ = mask_groundtruth[organlist, :, :]
     dice = dice_coefficient(mask_organ, mask_generated)
     print(i, dice)
