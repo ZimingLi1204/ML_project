@@ -43,8 +43,10 @@ class Mydataset(Dataset):
         
 
 def load_data_train(cfg):
-    data_train_path = "BTCV/pre_processed_dataset1_train"
-    data_val_path = "BTCV/pre_processed_dataset1_val"
+    data_train_path = os.path.join(cfg['data']['data_root'], "pre_processed_dataset1_train_21-28")
+    data_val_path = os.path.join(cfg['data']['data_root'], "pre_processed_dataset1_val")
+    # data_train_path = "BTCV/pre_processed_dataset1_train"
+    # data_val_path = "BTCV/pre_processed_dataset1_val"
     train_dataset, val_dataset = load_train_data_from_dir(data_train_path, data_val_path)
     
     return train_dataset, val_dataset  # type = Mydataset
@@ -53,8 +55,8 @@ def load_data_train(cfg):
 def load_data_test(cfg):
     # test_data_dir = os.path.join(cfg["data"]["data_root"], "test_img")
     # test_dataset = load_test_data_from_dir(test_data_dir)
-
-    data_test_path = "BTCV/pre_processed_dataset1_test"
+    data_test_path = os.path.join(cfg['data']['data_root'], "pre_processed_dataset1_test")
+    # data_test_path = "BTCV/pre_processed_dataset1_test"
     test_dataset = load_test_data_from_dir(data_test_path)
 
     return test_dataset
