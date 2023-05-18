@@ -5,7 +5,7 @@ sys.path.append("..")
 from segment_anything import sam_model_registry, SamPredictor
 from torch.nn.functional import threshold, normalize
 from torch.utils.tensorboard import SummaryWriter
-
+from segment_anything.utils.transforms import ResizeLongestSide
 
 class finetune_sam():
     
@@ -32,13 +32,13 @@ class finetune_sam():
             raise NotImplementedError
             
         self.cfg = cfg
-
+        self.transform = ResizeLongestSide(self.cfg['data']['input_size'][0])
 
     def train(self, dataloader, val_dataloader):
         
         #设定image size
-        self.input_size = (self.cfg['data']['img_size'], self.cfg['data']['img_size'])
-        self.original_image_size = self.input_size
+        self.input_size = (self.cfg['data']['input_size'][0], self.cfg['data']['input_size'][1])
+        self.original_image_size = (self.cfg['data']['img_size'][0], self.cfg['data']['img_size'][1])
 
         ##tensorboard summary writer
         
@@ -50,6 +50,10 @@ class finetune_sam():
         for epoch in range(self.cfg['train']['max_epoch']):
             for img, gt_mask, promt, promt_type in dataloader:
                 with torch.no_grad():
+
+                    ####TODO####
+                    #把最长边resize成1024, 短边padding
+                    img = self.transform(img)
                     image_embedding = self.sam_model.image_encoder(img)
 
                     ###构建promt
@@ -59,7 +63,7 @@ class finetune_sam():
                     elif promt_type == 'mask':
                         masks = promt
                     elif promt_type == 'points':
-                        points = promt
+                        points =promt
                     else:
                         raise NotImplementedError
                                             

@@ -4,11 +4,6 @@ debug: False
 test: False
 device: cuda
 
-data:
-  data_root: "data"
-  split_ratio: 0.2
-  img_size: 192
-
 train:
   use_tensorboard: True
   log_dir: 'log/debug'
@@ -25,3 +20,13 @@ test:
 
 model:
   model_type: vit_h
+
+
+data:
+  data_root: "pre_processed_data1"
+  split_ratio: 0.2
+  img_size: [512, 512]
+  input_size: [1024, 1024]
+
+
+     

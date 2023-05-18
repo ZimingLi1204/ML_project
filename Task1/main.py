@@ -9,7 +9,7 @@ import Task2.data as DT
 import cv2
 import numpy as np
 import os
-
+import Task1.metrics
 
 
 def test(predictor, dataset : Mydataset):
@@ -93,3 +93,4 @@ if __name__ == "__main__":
     ###TODO###
     # evaluation metrics
     # return eval_mDice(gen_mask, gt_mask)
+
