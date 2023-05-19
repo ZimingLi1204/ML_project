@@ -49,7 +49,7 @@ def parse_args():
     # parser.add_argument('--seed', type=int, default=None)
     # parser.add_argument('--use_wandb', default=False, action='store_true')
     # parser.add_argument('--test', default=False, action='store_true')
-    parser.add_argument('--cuda_id', default=None, type=int)
+    parser.add_argument('--gpu_id', default=None, type=int)
 
     # #domain adversarial
     # parser.add_argument('--use_DA', default=False, action='store_true')

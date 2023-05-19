@@ -66,7 +66,7 @@ class finetune_sam():
         n_iter = 0
 
         print("############start training################")
-        for epoch in tqdm(range(self.cfg['train']['max_epoch']), ncols=90, desc="epoch", position=0):
+        for epoch in tqdm(range(self.cfg['train']['max_epoch']), ncols=90, desc="epoch", position=1):
             
             ###eval结果并save model
             result = self.val(val_dataloader)
@@ -81,7 +81,7 @@ class finetune_sam():
 
             ###eval end###
             
-            pbar = tqdm(dataloader, ncols=90, desc="iter", position=1)
+            pbar = tqdm(dataloader, ncols=90, desc="iter", position=0)
             for img, gt_mask, promt, promt_label, promt_type in pbar:
 
                 img = img.to(self.device)
@@ -164,7 +164,7 @@ class finetune_sam():
         loss_all = []
         iou_all = []
 
-        pbar = tqdm(dataloader, ncols=90, desc="eval", position=1)
+        pbar = tqdm(dataloader, ncols=90, desc="eval", position=0)
         for img, gt_mask, promt, promt_label, promt_type in pbar:
 
             img = img.to(self.device)
