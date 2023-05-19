@@ -38,9 +38,9 @@ if __name__ == '__main__':
     train_dataset, val_dataset = load_data_train(cfg)
     print("#####Loading test data#######")
     test_dataset = load_data_test(cfg)
-    train_dataloader = DataLoader(train_dataset, batch_size=cfg['train']['batch_size'])
-    val_dataloader = DataLoader(val_dataset, batch_size=cfg['test']['batch_size'])
-    test_dataloader = DataLoader(test_dataset, batch_size=cfg['test']['batch_size'])
+    train_dataloader = DataLoader(train_dataset, batch_size=cfg['train']['batch_size'], shuffle=True)
+    val_dataloader = DataLoader(val_dataset, batch_size=cfg['test']['batch_size'], shuffle=True)
+    test_dataloader = DataLoader(test_dataset, batch_size=cfg['test']['batch_size'], shuffle=True)
     print("#######Finishi Loading########")
 
     if cfg["test"]["test"]:

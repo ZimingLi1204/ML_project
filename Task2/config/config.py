@@ -13,12 +13,14 @@ def parse_args():
     # parser.add_argument('--train_feature_length', type=int, default=None, help='how many days used before for features')
     # parser.add_argument('--train_length', type=int, default=None, help='how many trading days used before for features')
     # parser.add_argument('--use_dataloder', default=False, action='store_true', help='use dataloder or batch data ')
+    parser.add_argument('--use_embedded', default=False, action='store_true')
     
     # #learning
-    # parser.add_argument('--batch_size', type=int, default=None, help='batch size')
+    parser.add_argument('--batch_size', type=int, default=None, help='batch size')
     # parser.add_argument('--batch_split', type=int, default=None, help='batch split for no dataloder situation')
-    # parser.add_argument('--learning_rate', type=float, default=None)
-    # parser.add_argument('--weight_decay', default=None, type=float)
+    parser.add_argument('--learning_rate', type=float, default=None)
+    parser.add_argument('--weight_decay', default=None, type=float)
+    parser.add_argument('--optimizer', default=None, type=str)
     # parser.add_argument('--schedular', default=None, type=str)
 
     # #loss 
@@ -61,6 +63,21 @@ def process_cfg(cfg, args=None, mode = ''):
 
     assert(cfg["train"]["loss"] in ["MSE", "SmoothL1"])
 
+    #train hyperparameters
+    if args.batch_size is not None:
+        cfg['train']['batch_size'] = args.batch_size
+    if args.learning_rate is not None:
+        cfg['train']['learning_rate'] = args.learning_rate
+    if args.weight_decay is not None:
+        cfg['train']['weight_decay'] = args.weight_decay
+    if args.optimizer is not None:
+        cfg['train']['optimizer'] = args.optimizer
+
+    ####data
+
+    cfg["data"]["use_embedded"] = True
+    
+    ###save name and dir
     if args.group_name is not None:
         cfg['train']['group'] = args.group_name
     if args.save_name is not None:
@@ -73,6 +90,12 @@ def process_cfg(cfg, args=None, mode = ''):
     cfg['train']['log_dir'] = os.path.join(cfg['train']['log_dir'], cfg["train"]['save_name'])
     if not os.path.exists(cfg['train']['log_dir']):
         os.mkdir(cfg['train']['log_dir'])
+
+
+    ####data
+    if cfg["data"]["use_embedded"]:
+        cfg["data"]["data_name"] = "vit-h_embedding_dataset1"
+
 
     print(cfg)
     return cfg
