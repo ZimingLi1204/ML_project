@@ -162,6 +162,7 @@ class TwoWayAttentionBlock(nn.Module):
 
         # Cross attention block, tokens attending to image embedding
         q = queries + query_pe
+
         k = keys + key_pe
         attn_out = self.cross_attn_token_to_image(q=q, k=k, v=keys)
         queries = queries + attn_out

@@ -2,9 +2,9 @@
 /data1 
 /pretrain_model
 /.DS_Store
-/segment-anything
 log
 /pre_processed_data1
 /pre_processed_data_train_1-10
 .idea/
-BTCV/
+/BTCV*
+__pycache__
