@@ -67,12 +67,16 @@ def get_promt(img, mask, promt_type = "single_point", point_num = 1, box_num = 1
     ###TODO###
     #根据输入img和mask生成promt
     # box or mask or points or single_point!!!
+    # 需要保证生成的 point promt均在mask前景中
+    # 不同类型promt 的具体格式见 segment_anything/predictor.py 104-130行注释
 
     promt = None
 
     if promt_type == "single_point":   # 单点 1个XY坐标 和 1个01 label
         coord = np.random.randint(low=1, high=512, size=(1, 2))
-        label = np.array([mask[coord[0, 0], coord[0, 1]]]) ###
+        while mask[coord[0, 0], coord[0, 1]] == 0:      # 随机取一个在mask前景中的XY坐标
+            coord = np.random.randint(low=1, high=512, size=(1, 2))
+        label = np.array([mask[coord[0, 0], coord[0, 1]]])
         promt = coord, label
     elif promt_type == "points":   # 多点   N个XY坐标 和 N个01 label
         coord = np.random.randint(low=1, high=512, size=(point_num, 2))
@@ -89,7 +93,6 @@ def get_promt(img, mask, promt_type = "single_point", point_num = 1, box_num = 1
     return promt
 
 def load_train_data_from_dir(data_train_path, data_val_path):
-    ###TODO###
     #根据路径提取并处理数据, 划分训练/验证集. 这部分数据都是有label的
 
     print("loading img & mask......")
@@ -119,7 +122,6 @@ def load_train_data_from_dir(data_train_path, data_val_path):
 
 
 def load_test_data_from_dir(data_test_path) -> Mydataset:
-    ###TODO###
     #根据路径提取并处理数据, 生成测试集, 有label
 
     print("loading test img & mask......")

@@ -22,8 +22,8 @@ if __name__ == "__main__":
 
     # 将30个CT安排为train val 和 test
     # train 编号为 1-10 21-28
-    # test 编号为 29-34
-    # val 编号为 35-40
+    # val 编号为 29-34
+    # test 编号为 35-40
 
     # 18个CT用于train
     train_img = np.zeros([0, 512, 512])  # ndarray   N * 512 * 512
@@ -78,7 +78,7 @@ if __name__ == "__main__":
                 train_name.append(name[index])
                 train_slice_id.append(slice_id[index])
                 train_category.append(mask_category)
-        elif 29 <= int(name[index]) <= 34:    # test dataset
+        elif 35 <= int(name[index]) <= 40:    # test dataset
             for mask_category in mask_category_list:
                 test_img = np.concatenate((test_img, img.reshape(-1, img.shape[0], img.shape[1])), axis=0)
                 zero_one_mask = np.array([x == mask_category for x in label])
@@ -86,7 +86,7 @@ if __name__ == "__main__":
                 test_name.append(name[index])
                 test_slice_id.append(slice_id[index])
                 test_category.append(mask_category)
-        elif 35 <= int(name[index]) <= 40:    # validate dataset
+        elif 29 <= int(name[index]) <= 34:    # validate dataset
             for mask_category in mask_category_list:
                 val_img = np.concatenate((val_img, img.reshape(-1, img.shape[0], img.shape[1])), axis=0)
                 zero_one_mask = np.array([x == mask_category for x in label])
