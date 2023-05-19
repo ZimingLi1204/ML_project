@@ -11,7 +11,7 @@ from utils import get_promt
 
 class Mydataset(Dataset):
 
-    def __init__(self, mode: torch.tensor, img : torch.tensor , mask: 'None|torch.tensor', name: list, slice_id: list, category: list, promt_type="single_point"):
+    def __init__(self, mode: torch.tensor, img : torch.tensor , mask: torch.tensor, name: list, slice_id: list, category: list, promt_type="single_point"):
         '''
         mode: train/val/test
         data: N * 512 * 512.
@@ -73,6 +73,7 @@ def load_train_data_from_dir(data_train_path, data_val_path, info_train_path, in
     print("loading img & mask......")
     train_data = np.load(info_train_path+'.npz')
     val_data = np.load(info_val_path+'.npz')
+    #这里load data大约需要10分钟
     if use_embedded:
         train_embedded_data = np.load(data_train_path+'.npy')
         val_embedded_data = np.load(data_val_path+'.npy')
@@ -97,18 +98,16 @@ def load_train_data_from_dir(data_train_path, data_val_path, info_train_path, in
     category_train = train_info["category"]
     category_val = val_info["category"]
    
-    print("constructing dataset")
     mydataset_train = Mydataset(mode='train',img=img_train, mask=mask_train, name=name_train, slice_id=slice_id_train, category=category_train)
     mydataset_val = Mydataset(mode='train', img=img_val, mask=mask_val, name=name_val, slice_id=slice_id_val, category=category_val)
 
     return mydataset_train, mydataset_val
 
-
 def load_test_data_from_dir(data_test_path, info_test_path, use_embedded=False) -> Mydataset:
     #根据路径提取并处理数据, 生成测试集, 有label
 
     print("loading test img & mask......")
-    test_data = np.load(data_test_path + '.npz')
+    test_data = np.load(info_test_path + '.npz')
     if use_embedded:
         test_embedded_data = np.load(data_test_path+'.npy')
 

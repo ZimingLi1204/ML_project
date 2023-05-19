@@ -1,13 +1,19 @@
 import sys
 import torch
 import torch.nn as nn
+import numpy as np
 from tqdm import tqdm
 import pdb
 sys.path.append("..")
 from segment_anything.build_sam import sam_model_registry
+from segment_anything.modeling import Sam
 from torch.nn.functional import threshold, normalize
 from torch.utils.tensorboard import SummaryWriter
 from segment_anything.utils.transforms import ResizeLongestSide
+
+class Mysam(Sam):
+    def __init__(self) -> None:
+        super.__init__()
 
 class finetune_sam():
     
@@ -22,10 +28,12 @@ class finetune_sam():
         self.sam_model = sam_model_registry[self.model_type](checkpoint=sam_checkpoint)
         self.sam_model.to(device=self.device)
        
-        self.optim = cfg['train']['optimizer']
-        self.loss = cfg['train']['loss']
         self.use_tensorboard = cfg["train"]['use_tensorboard']
         self.log_dir = cfg['train']['log_dir']
+        self.use_embedded = cfg["data"]["use_embedded"]
+
+        self.optim = cfg['train']['optimizer']
+        self.loss = cfg['train']['loss']
         self.lr = cfg['train']['learning_rate']
 
         if self.optim == 'Adam':
@@ -58,18 +66,22 @@ class finetune_sam():
         n_iter = 0
 
         print("############start training################")
-        for epoch in tqdm(range(self.cfg['train']['max_epoch']), ncols=80, desc="epoch", position=0):
+        for epoch in tqdm(range(self.cfg['train']['max_epoch']), ncols=90, desc="epoch", position=0):
             
-            ###每个epoch后eval结果并save model
+            ###eval结果并save model
             result = self.val(val_dataloader)
             dice_val, loss_val, iou_val = result
             if self.use_tensorboard:
-                writer.add_scalar('loss/val', loss_val.cpu(), epoch)
-                writer.add_scalar('dice/val', dice_val.cpu(), epoch)
-                writer.add_scalar('iou/val', iou_val.cpu(), epoch)
+                writer.add_scalar('loss/val', loss_val, epoch)
+                writer.add_scalar('dice/val', dice_val, epoch)
+                writer.add_scalar('iou/val', iou_val, epoch)
+
+            ###save model
+            torch.save(self.sam_model.mask_decoder.state_dict(), self.log_dir + '/' + '{}.pth'.format(epoch))
+
+            ###eval end###
             
-            
-            pbar = tqdm(dataloader, ncols=100, desc="iter", position=1)
+            pbar = tqdm(dataloader, ncols=90, desc="iter", position=1)
             for img, gt_mask, promt, promt_label, promt_type in pbar:
 
                 img = img.to(self.device)
@@ -77,20 +89,22 @@ class finetune_sam():
                 promt = promt.to(self.device)
                 promt_label = promt_label.to(self.device)
 
-                
                 with torch.no_grad():
                     
-                    ####TODO####
-                    #把最长边resize成1024, 短边padding
-                    img = img.unsqueeze(1)
-                    # pdb.set_trace()
-                    img = self.transform.apply_image_torch(img.float())
-                    
-                    ###问题: 输入三通道
-                    img = img.repeat(1, 3, 1, 1)
-                    input_img = self.sam_model.preprocess(img)
-                    # pdb.set_trace()
-                    image_embedding = self.sam_model.image_encoder(input_img)
+                    if self.use_embedded:
+                        image_embedding = img
+                    else:
+                        ####TODO####
+                        #把最长边resize成1024, 短边padding
+                        img = img.unsqueeze(1)
+                        # pdb.set_trace()
+                        img = self.transform.apply_image_torch(img.float())
+                        
+                        ###问题: 输入三通道
+                        img = img.repeat(1, 3, 1, 1)
+                        input_img = self.sam_model.preprocess(img)
+                        # pdb.set_trace()
+                        image_embedding = self.sam_model.image_encoder(input_img)
 
                     ###构建promt
                     points, boxes, masks = None, None, None
@@ -114,7 +128,7 @@ class finetune_sam():
                         masks=masks,
                     )
                 
-                # pdb.set_trace()
+               #decoder
 
                 low_res_masks, iou_predictions = self.sam_model.mask_decoder(
                     image_embeddings=image_embedding,
@@ -143,9 +157,6 @@ class finetune_sam():
                     writer.add_scalar('loss/train', loss.cpu(), n_iter)
                     writer.add_scalar('iou/train', iou_predictions.mean().cpu(), n_iter) #因为只设置了一个mask, 所以直接取0
 
-            ###save model
-            torch.save(self.sam_model.mask_decoder.parameters(), self.log_dir + '/' + '{}.pth'.format(epoch))
-
         pass
 
     def val(self, dataloader):
@@ -153,7 +164,7 @@ class finetune_sam():
         loss_all = []
         iou_all = []
 
-        pbar = tqdm(dataloader, ncols=100, desc="eval", position=1)
+        pbar = tqdm(dataloader, ncols=90, desc="eval", position=1)
         for img, gt_mask, promt, promt_label, promt_type in pbar:
 
             img = img.to(self.device)
@@ -163,7 +174,7 @@ class finetune_sam():
             
             with torch.no_grad():
                 
-                if self.cfg['data']['use_embedded']:
+                if self.use_embedded:
                     image_embedding = img
                 else:
                     ####TODO####
@@ -214,13 +225,14 @@ class finetune_sam():
                 binary_mask = normalize(threshold(upscaled_masks, 0.0, 0)).to(self.device)
                 loss = self.loss_fn(binary_mask, gt_mask)
 
-                loss_all.append(loss.cpu())
+                loss_all.append(loss.cpu().item())
                 iou_all.append(iou_predictions.cpu())
 
         ###save model
         # torch.save()
-        loss_all = torch.concatenate(loss_all).mean()
-        loss_all = torch.concatenate(iou_all).mean()
+        # pdb.set_trace()
+        loss_all = np.array(loss_all).mean() 
+        iou_all = torch.concatenate(iou_all).mean().item()
         return 0, loss_all, iou_all
 
     def test(self, dataloader):

@@ -43,12 +43,13 @@ def parse_args():
     parser.add_argument('--data_root', default=None, type=str, help='train data root')
     parser.add_argument('--ckpt_path', default=None, type=str, help='load model dir')
     parser.add_argument('--save_name', type=str, default=None)
-    parser.add_argument('--group_name', type=str, default=None)
+    parser.add_argument('--gpu_name', type=str, default=None)
 
     # #others
     # parser.add_argument('--seed', type=int, default=None)
     # parser.add_argument('--use_wandb', default=False, action='store_true')
     # parser.add_argument('--test', default=False, action='store_true')
+    parser.add_argument('--cuda_id', default=None, type=int)
 
     # #domain adversarial
     # parser.add_argument('--use_DA', default=False, action='store_true')
@@ -76,6 +77,10 @@ def process_cfg(cfg, args=None, mode = ''):
     ####data
 
     cfg["data"]["use_embedded"] = True
+
+    ###others
+    if args.gpu_id is not None:
+        cfg["device_id"] = args.gpu_id
     
     ###save name and dir
     if args.group_name is not None:
