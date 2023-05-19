@@ -1,0 +1,1 @@
+python main.py --group_name finetune --save_name first_try_bc4

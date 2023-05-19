@@ -34,14 +34,16 @@ if __name__ == '__main__':
 
     algo = finetune_sam(cfg)
 
+    print("#####Loading train data#######")
     train_dataset, val_dataset = load_data_train(cfg)
+    print("#####Loading test data#######")
     test_dataset = load_data_test(cfg)
     train_dataloader = DataLoader(train_dataset, batch_size=cfg['train']['batch_size'])
     val_dataloader = DataLoader(val_dataset, batch_size=cfg['test']['batch_size'])
     test_dataloader = DataLoader(test_dataset, batch_size=cfg['test']['batch_size'])
+    print("#######Finishi Loading########")
 
-
-    if cfg["test"]:
+    if cfg["test"]["test"]:
         algo.test(test_dataloader)
     else:
         algo.train(train_dataloader, val_dataloader)

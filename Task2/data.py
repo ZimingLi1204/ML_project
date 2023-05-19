@@ -3,7 +3,9 @@ import os
 import torch
 import numpy as np
 import scipy.io as scio
-
+import sys
+import pdb
+sys.path.append("..")
 class Mydataset(Dataset):
 
     def __init__(self, mode: torch.tensor, img : torch.tensor , mask: 'None|torch.tensor', name: list, slice_id: list, category: list, promt_type="single_point"):
@@ -30,20 +32,19 @@ class Mydataset(Dataset):
     def __getitem__(self, index):
 
         img = self.img[index]
-        promt = None
+        promt, promt_label = None, None
         promt_type = self.promt_type
 
-        if self.mode == 'test':
-            mask = None
-        else:
-            mask = self.mask[index]
-            promt = get_promt(mask, img, promt_type)
+        mask = self.mask[index]
+        promt = get_promt(img, mask, promt_type)
+        if isinstance(promt, tuple):
+            promt, promt_label = promt
 
-        return img, mask, promt, promt_type
+        return img, mask, promt, promt_label, promt_type
         
 
 def load_data_train(cfg):
-    data_train_path = os.path.join(cfg['data']['data_root'], "pre_processed_dataset1_train_21-28")
+    data_train_path = os.path.join(cfg['data']['data_root'], "pre_processed_dataset1_train")
     data_val_path = os.path.join(cfg['data']['data_root'], "pre_processed_dataset1_val")
     # data_train_path = "BTCV/pre_processed_dataset1_train"
     # data_val_path = "BTCV/pre_processed_dataset1_val"
@@ -71,11 +72,11 @@ def get_promt(img, mask, promt_type = "single_point", point_num = 1, box_num = 1
 
     if promt_type == "single_point":   # 单点 1个XY坐标 和 1个01 label
         coord = np.random.randint(low=1, high=512, size=(1, 2))
-        label = mask[coord[0, 0], coord[0, 1]]
+        label = np.array([mask[coord[0, 0], coord[0, 1]]]) ###
         promt = coord, label
     elif promt_type == "points":   # 多点   N个XY坐标 和 N个01 label
         coord = np.random.randint(low=1, high=512, size=(point_num, 2))
-        label = np.array([mask[coord[i, 0], coord[i, 1]] for i in range(point_num)])
+        label = np.array([mask[coord[0, 0], coord[0, 1]] for i in range(point_num)])
         promt = coord, label
     elif promt_type == "box":   # 边界框  形如XYXY
         coord = np.random.randint(low=1, high=512, size=4)
@@ -92,8 +93,8 @@ def load_train_data_from_dir(data_train_path, data_val_path):
     #根据路径提取并处理数据, 划分训练/验证集. 这部分数据都是有label的
 
     print("loading img & mask......")
-    train_data = np.load(data_train_path+'.npy')
-    val_data = np.load(data_val_path+'.npy')
+    train_data = np.load(data_train_path+'.npz')
+    val_data = np.load(data_val_path+'.npz')
 
     print("loading name & slice_id & category......")
     train_info = scio.loadmat(data_train_path+'.mat')
@@ -109,6 +110,7 @@ def load_train_data_from_dir(data_train_path, data_val_path):
     slice_id_val = val_info["slice_id"]
     category_train = train_info["category"]
     category_val = val_info["category"]
+    # print(mask_train.max())
 
     mydataset_train = Mydataset(mode='train',img=img_train, mask=mask_train, name=name_train, slice_id=slice_id_train, category=category_train)
     mydataset_val = Mydataset(mode='train', img=img_val, mask=mask_val, name=name_val, slice_id=slice_id_val, category=category_val)
@@ -121,7 +123,7 @@ def load_test_data_from_dir(data_test_path) -> Mydataset:
     #根据路径提取并处理数据, 生成测试集, 有label
 
     print("loading test img & mask......")
-    test_data = np.load(data_test_path + '.npy')
+    test_data = np.load(data_test_path + '.npz')
 
     print("loading test name & slice_id & category......")
     test_info = scio.loadmat(data_test_path + '.mat')
