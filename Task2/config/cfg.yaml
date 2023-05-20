@@ -14,7 +14,7 @@ train:
   batch_size: 4
   weight_decay: 1.e-3
   loss: 'MSE'
-  max_epoch: 100
+  max_epoch: 10
   
 
 test:
@@ -35,5 +35,6 @@ data:
   use_embedded: False
   data_name: pre_processed_dataset1
   info_name: pre_processed_dataset1
+  load_from_disk: False
 
      

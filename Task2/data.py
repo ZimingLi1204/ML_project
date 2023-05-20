@@ -11,7 +11,7 @@ from utils import get_promt
 
 class Mydataset(Dataset):
 
-    def __init__(self, mode: torch.tensor, img : torch.tensor , mask: torch.tensor, name: list, slice_id: list, category: list, promt_type="single_point"):
+    def __init__(self, mode: torch.tensor, img : torch.tensor , mask: torch.tensor, name: list, slice_id: list, category: list, promt_type="single_point", load_from_disk=False):
         '''
         mode: train/val/test
         data: N * 512 * 512.
@@ -27,6 +27,7 @@ class Mydataset(Dataset):
         self.slice_id = slice_id
         self.category = category
         self.promt_type = promt_type
+        self.load_from_disk = load_from_disk
 
     def __len__(self):
         
@@ -35,6 +36,8 @@ class Mydataset(Dataset):
     def __getitem__(self, index):
 
         img = self.img[index]
+        # if self.load_from_disk:
+        #     img = img.copy()
         promt, promt_label = None, None
         promt_type = self.promt_type
 
@@ -53,7 +56,7 @@ def load_data_train(cfg):
     info_train_path = os.path.join(cfg['data']['data_root'], cfg["data"]["info_name"] + '_' + "train")
     info_val_path = os.path.join(cfg['data']['data_root'],  cfg["data"]["info_name"] + '_' + "val")
     
-    train_dataset, val_dataset = load_train_data_from_dir(data_train_path, data_val_path, info_train_path, info_val_path, use_embedded=cfg['data']['use_embedded'])
+    train_dataset, val_dataset = load_train_data_from_dir(data_train_path, data_val_path, info_train_path, info_val_path, use_embedded=cfg['data']['use_embedded'], load_from_disk = cfg['data']['load_from_disk'])
     
     return train_dataset, val_dataset 
     
@@ -63,27 +66,32 @@ def load_data_test(cfg):
     data_test_path = os.path.join(cfg['data']['data_root'],  cfg["data"]["data_name"] + '_' + "test")
     info_test_path = os.path.join(cfg['data']['data_root'],  cfg["data"]["info_name"] + '_' + "test")
    
-    test_dataset = load_test_data_from_dir(data_test_path, info_test_path, use_embedded=cfg['data']['use_embedded'])
+    test_dataset = load_test_data_from_dir(data_test_path, info_test_path, use_embedded=cfg['data']['use_embedded'], load_from_disk = cfg['data']['load_from_disk'])
 
     return test_dataset
 
-def load_train_data_from_dir(data_train_path, data_val_path, info_train_path, info_val_path, use_embedded=False):
+def load_train_data_from_dir(data_train_path, data_val_path, info_train_path, info_val_path, use_embedded=False, load_from_disk = False):
     #根据路径提取并处理数据, 划分训练/验证集. 这部分数据都是有label的
 
     print("loading img & mask......")
     train_data = np.load(info_train_path+'.npz')
     val_data = np.load(info_val_path+'.npz')
-    #这里load data大约需要10分钟
+    
     if use_embedded:
-        train_embedded_data = np.load(data_train_path+'.npy')
-        val_embedded_data = np.load(data_val_path+'.npy')
+        if load_from_disk:
+            train_embedded_data = np.load(data_train_path+'.npy', mmap_mode='r')
+            val_embedded_data = np.load(data_val_path+'.npy', mmap_mode='r')
+        else:
+            #这里load data大约需要10分钟
+            train_embedded_data = np.load(data_train_path+'.npy')
+            val_embedded_data = np.load(data_val_path+'.npy')
 
     print("loading name & slice_id & category......")
     train_info = scio.loadmat(info_train_path+'.mat')
     val_info = scio.loadmat(info_val_path+'.mat')
 
     if use_embedded:
-        img_train =train_embedded_data
+        img_train = train_embedded_data
         img_val = val_embedded_data
     else:
         img_train = train_data["img"]
@@ -98,18 +106,21 @@ def load_train_data_from_dir(data_train_path, data_val_path, info_train_path, in
     category_train = train_info["category"]
     category_val = val_info["category"]
    
-    mydataset_train = Mydataset(mode='train',img=img_train, mask=mask_train, name=name_train, slice_id=slice_id_train, category=category_train)
-    mydataset_val = Mydataset(mode='train', img=img_val, mask=mask_val, name=name_val, slice_id=slice_id_val, category=category_val)
+    mydataset_train = Mydataset(mode='train',img=img_train, mask=mask_train, name=name_train, slice_id=slice_id_train, category=category_train, load_from_disk=load_from_disk)
+    mydataset_val = Mydataset(mode='train', img=img_val, mask=mask_val, name=name_val, slice_id=slice_id_val, category=category_val, load_from_disk=load_from_disk)
 
     return mydataset_train, mydataset_val
 
-def load_test_data_from_dir(data_test_path, info_test_path, use_embedded=False) -> Mydataset:
+def load_test_data_from_dir(data_test_path, info_test_path, use_embedded=False, load_from_disk = False) -> Mydataset:
     #根据路径提取并处理数据, 生成测试集, 有label
 
     print("loading test img & mask......")
     test_data = np.load(info_test_path + '.npz')
     if use_embedded:
-        test_embedded_data = np.load(data_test_path+'.npy')
+        if load_from_disk:
+            test_embedded_data = np.load(data_test_path+'.npy', mmap_mode='r')
+        else:
+            test_embedded_data = np.load(data_test_path+'.npy')
 
     print("loading test name & slice_id & category......")
     test_info = scio.loadmat(info_test_path + '.mat')
@@ -125,7 +136,7 @@ def load_test_data_from_dir(data_test_path, info_test_path, use_embedded=False) 
     category_test = test_info["category"]
 
     mydataset_test = Mydataset(mode='test', img=img_test, mask=mask_test, name=name_test, slice_id=slice_id_test,
-                                category=category_test)
+                                category=category_test, load_from_disk=load_from_disk)
 
 
     return mydataset_test
@@ -173,6 +184,7 @@ def save_embedded_data():
         image_embedding = np.array(image_embedding.cpu())
         return image_embedding
 
+    ####可以根据自己的gpu显存大小改batch size
     bc = 5
 
     #training_data

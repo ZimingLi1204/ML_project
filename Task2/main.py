@@ -34,17 +34,18 @@ if __name__ == '__main__':
 
     algo = finetune_sam(cfg)
 
-    #大概需要10分钟读取image
-    print("#####Loading train data#######")
-    train_dataset, val_dataset = load_data_train(cfg)
-   
-    
-    train_dataloader = DataLoader(train_dataset, batch_size=cfg['train']['batch_size'], shuffle=True)
-    val_dataloader = DataLoader(val_dataset, batch_size=cfg['test']['batch_size'], shuffle=True)
+    #大概需要10-15分钟读取image
+
     if cfg["test"]["test"]:
         print("#####Loading test data#######")
         test_dataset = load_data_test(cfg)
-        test_dataloader = DataLoader(test_dataset, batch_size=cfg['test']['batch_size'], shuffle=True)
+        test_dataloader = DataLoader(test_dataset, batch_size=cfg['test']['batch_size'], shuffle=True, num_workers=4)
+    else:
+        print("#####Loading train data#######")
+        train_dataset, val_dataset = load_data_train(cfg)
+        train_dataloader = DataLoader(train_dataset, batch_size=cfg['train']['batch_size'], shuffle=True, num_workers=4)
+        val_dataloader = DataLoader(val_dataset, batch_size=cfg['test']['batch_size'], shuffle=True, num_workers=4)
+
     print("#######Finishi Loading########")
 
     if cfg["test"]["test"]:

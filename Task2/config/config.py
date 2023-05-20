@@ -14,7 +14,8 @@ def parse_args():
     # parser.add_argument('--train_length', type=int, default=None, help='how many trading days used before for features')
     # parser.add_argument('--use_dataloder', default=False, action='store_true', help='use dataloder or batch data ')
     parser.add_argument('--use_embedded', default=False, action='store_true')
-    
+    parser.add_argument('--load_from_disk', default=False, action='store_true')
+
     # #learning
     parser.add_argument('--batch_size', type=int, default=None, help='batch size')
     # parser.add_argument('--batch_split', type=int, default=None, help='batch split for no dataloder situation')
@@ -43,7 +44,7 @@ def parse_args():
     parser.add_argument('--data_root', default=None, type=str, help='train data root')
     parser.add_argument('--ckpt_path', default=None, type=str, help='load model dir')
     parser.add_argument('--save_name', type=str, default=None)
-    parser.add_argument('--gpu_name', type=str, default=None)
+    parser.add_argument('--group_name', type=str, default=None)
 
     # #others
     # parser.add_argument('--seed', type=int, default=None)
@@ -75,8 +76,10 @@ def process_cfg(cfg, args=None, mode = ''):
         cfg['train']['optimizer'] = args.optimizer
 
     ####data
-
-    cfg["data"]["use_embedded"] = True
+    if args.use_embedded:
+        cfg["data"]["use_embedded"] = True
+    if args.load_from_disk:
+        cfg["data"]["load_from_disk"] = True
 
     ###others
     if args.gpu_id is not None:
