@@ -2,17 +2,16 @@
 import numpy as np
 import scipy.io as scio
 
-# mask_generated = np.load('data1/train/label/label0001.nii.gz_101.npy')
-test_set = np.load('pre_processed_data1_缺部分trainset/pre_processed_dataset1_test.npz')
-mask_gen = test_set["mask"]
+
+test_set = np.load('../pre_processed_data1/pre_processed_dataset1_test.npz')
 mask_groundtruth = test_set["mask"]
 
-info = scio.loadmat('pre_processed_data1_缺部分trainset/pre_processed_dataset1_test.mat')
+info = scio.loadmat('../pre_processed_data1/pre_processed_dataset1_test.mat')
 cate = info["category"]
 cate = cate[0, :]
 CT_idx = np.int32(info["name"])
 CT_idx = CT_idx.reshape(-1)
-listp = [0, 0, 0, 0, 0, 0, 0]
+listp = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 print("data loaded")
 '''
 j = 1
@@ -64,33 +63,32 @@ def eval_mdice(case_num, gen_mask):
         gen_mask: N * 512 * 512
     '''
     sumdice = float(0)
-    print(cate.shape)
+    
     for i in range (1, 14):
-        cate_CT = cate[listp[case_num-35]:listp[case_num-34]]
-        gen_mask_CT = gen_mask[listp[case_num-35]:listp[case_num-34], :, :]
-        gt_mask_CT = mask_groundtruth[listp[case_num-35]:listp[case_num-34], :, :]
-        print(cate_CT.shape)
-        #breakpoint()
+        cate_CT = cate[listp[case_num]:listp[case_num + 1]]
+        gen_mask_CT = gen_mask[listp[case_num]:listp[case_num + 1], :, :]
+        gt_mask_CT = mask_groundtruth[listp[case_num]:listp[case_num + 1], :, :]
+        
+        
         location_list = []
         for j, k in enumerate(cate_CT):
             if k == i:
                 location_list.append(j)
-        print(location_list)
-        # breakpoint()
+        
+        
         gt_mask_cate = gt_mask_CT[location_list, :, :]
         gen_mask_cate = gen_mask_CT[location_list, :, :]
         #assert gen_mask_cate.shape[0] == gt_mask_cate.shape[0] == len(location_list)
         dice = dice_coefficient(gt_mask_cate, gen_mask_cate)
-        print(i, dice)
+        print("Organ:", i,"Dice:", dice)
         sumdice += dice
 
     mdice = sumdice / 13
-    print(mdice)
+    print("mDice", i, mdice)
     return mdice
 
-find_pointer()
-print(listp)
-eval_mdice(35, mask_gen)
 
-#dice = np.zeros(13,layer_size)
+
+
+
 
