@@ -9,31 +9,40 @@ Adjust the Filepath to the reference set HERE!!!!!!
 '''
 
 def dice_coefficient(y_true, y_pred):
-        # Flatten the arrays
-        np.seterr(divide='ignore',invalid='ignore')
-        y_true_f = np.asarray(y_true).astype(np.int32)
-        y_pred_f = np.asarray(y_pred).astype(np.int32)
-        print(y_pred_f.shape)
-        # Compute the intersection
-        intersection = np.logical_and(y_true_f, y_pred_f)
-        #y_pred_f = np.logical_and(y_pred_f, y_pred_f)
-        if intersection.sum() == 0:
-            dsc = 0
-        # Compute the Dice coefficient
-        else :
-            dsc = (2. * intersection.sum()) / (y_true_f.sum() + y_pred_f.sum())
-            #print(intersection.sum())
-            #print(y_true_f.sum(), y_pred_f.sum())
-        
-        return dsc
+    # Flatten the arrays
+    np.seterr(divide='ignore',invalid='ignore')
+    y_true_f = np.asarray(y_true).astype(np.int32)
+    y_pred_f = np.asarray(y_pred).astype(np.int32)
+    print(y_pred_f.shape, y_true_f.shape)
+    # Compute the intersection
+    intersection = np.logical_and(y_true_f, y_pred_f)
+    #y_pred_f = np.logical_and(y_pred_f, y_pred_f)
+    if intersection.sum() == 0:
+        dsc = 0
+    # Compute the Dice coefficient
+    else :
+        dsc = (2. * intersection.sum()) / (y_true_f.sum() + y_pred_f.sum())
+        #print(intersection.sum())
+        #print(y_true_f.sum(), y_pred_f.sum())
+    
+    return dsc
 
 class Dice():
     def __init__(self, data_path = '../BTCV/pre_processed_dataset1_test.npz',
-                  info_path = '../BTCV/pre_processed_dataset1_test.mat') -> None:
-        
-        test_set = np.load(data_path)
-        info = scio.loadmat(info_path)
-        self.mask_groundtruth = test_set["mask"]
+                  info_path = '../BTCV/pre_processed_dataset1_test.mat', mask_gt = None, info_gt = None) -> None:
+        '''
+        如果给了数据(mask)和info, 那么就不再需要读取
+        '''
+        if (mask_gt is None):
+            test_set = np.load(data_path)
+            self.mask_groundtruth = test_set["mask"]
+        else:
+            self.mask_groundtruth = mask_gt
+        if info_gt is None:
+            info = scio.loadmat(info_path)
+        else:
+            info = info_gt
+
         fla = 0
         for i in range(self.mask_groundtruth.shape[0]):
             if np.max(self.mask_groundtruth[i, :, :]) != 1:
@@ -50,7 +59,6 @@ class Dice():
         self.CT_idx = self.CT_idx.reshape(-1)
         self.listp = [0] * 30
         print("data loaded")
-
 
 
     def find_pointer(self):
@@ -70,6 +78,7 @@ class Dice():
         '''
         sumdice = float(0)
         #print(cate.shape)
+        organ_num = 0
         for i in range (1, 14):
             cate_CT = self.cate[self.listp[case_num]:self.listp[case_num+1]]
             gen_mask_CT = gen_mask[self.listp[case_num]:self.listp[case_num+1], :, :]
@@ -85,11 +94,13 @@ class Dice():
             gt_mask_cate = gt_mask_CT[location_list, :, :]
             gen_mask_cate = gen_mask_CT[location_list, :, :]
             #assert gen_mask_cate.shape[0] == gt_mask_cate.shape[0] == len(location_list)
-            dice = dice_coefficient(gt_mask_cate, gen_mask_cate)
-            print("Organ:", i, "Dice:", dice)
-            sumdice += dice
+            if (gt_mask_cate.shape[0] != 0):
+                organ_num += 1
+                dice = dice_coefficient(gt_mask_cate, gen_mask_cate)
+                print("Organ:", i, "Dice:", dice)
+                sumdice += dice
 
-        mdice = sumdice / 13
+        mdice = sumdice / organ_num
         print("mDice", mdice)
         return mdice
 
@@ -101,5 +112,6 @@ class Dice():
         for i in range (iter):
             print("CT", i + 1, "_______________________________")
             m_Dice[i] = self.eval_mdice(i, gen_mask)
-        print("Total mDice:", m_Dice)
+        # print("Total mDice:", m_Dice)
+        return m_Dice
         #六个CT对应的m_Dice数据   

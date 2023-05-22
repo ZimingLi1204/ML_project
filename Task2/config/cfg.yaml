@@ -19,7 +19,7 @@ train:
 
 test:
   test: False
-  batch_size: 4
+  batch_size: 1
 
 model:
   model_root: ../pretrain_model

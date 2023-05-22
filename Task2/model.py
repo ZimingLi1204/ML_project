@@ -52,11 +52,11 @@ class finetune_sam():
 
         print("finish initialize model class")
 
-    def train(self, dataloader, val_dataloader):
-        
         #设定image size
         self.input_size = (self.cfg['data']['input_size'][0], self.cfg['data']['input_size'][1])
         self.original_image_size = (self.cfg['data']['img_size'][0], self.cfg['data']['img_size'][1])
+
+    def train(self, dataloader, val_dataset, metrics=None):
 
         ##tensorboard summary writer
         
@@ -69,7 +69,7 @@ class finetune_sam():
         for epoch in tqdm(range(self.cfg['train']['max_epoch']), ncols=90, desc="epoch", position=1):
             
             ###eval结果并save model
-            result = self.val(val_dataloader)
+            result = self.val(val_dataset, metric=metrics)
             dice_val, loss_val, iou_val = result
             if self.use_tensorboard:
                 writer.add_scalar('loss/val', loss_val, epoch)
@@ -159,14 +159,14 @@ class finetune_sam():
 
         pass
 
-    def val(self, dataloader):
+    def val(self, dataset, metrics=None):
         ###调用task1中的val函数
         loss_all = []
         iou_all = []
-
-        pbar = tqdm(dataloader, ncols=90, desc="eval", position=0)
-        for img, gt_mask, promt, promt_label, promt_type in pbar:
-
+        mask_all = []
+        pbar = tqdm(range(len(dataset)), ncols=90, desc="eval", position=0)
+        for i in pbar:
+            img, gt_mask, promt, promt_label, promt_type = dataset[i]
             img = img.to(self.device)
             gt_mask = gt_mask.to(self.device).unsqueeze(1).float()
             promt = promt.to(self.device)
@@ -223,6 +223,8 @@ class finetune_sam():
                 #mask
                 upscaled_masks = self.sam_model.postprocess_masks(low_res_masks, self.input_size, self.original_image_size).to(self.device)
                 binary_mask = normalize(threshold(upscaled_masks, 0.0, 0)).to(self.device)
+                mask_all.append(binary_mask)
+
                 loss = self.loss_fn(binary_mask, gt_mask)
 
                 loss_all.append(loss.cpu().item())
@@ -231,10 +233,97 @@ class finetune_sam():
         ###save model
         # torch.save()
         # pdb.set_trace()
+        mask_all = np.array(torch.concatenate(mask_all).cpu())
         loss_all = np.array(loss_all).mean() 
         iou_all = torch.concatenate(iou_all).mean().item()
-        return 0, loss_all, iou_all
 
-    def test(self, dataloader):
+        mDice = metrics.eval_data_processing(6, mask_all)
+        print("val mDice:", mDice)
+
+        return np.array(mDice).mean(), loss_all, iou_all
+
+    def test(self, dataset, metrics=None):
         ###调用task1的test 函数
-        pass
+        loss_all = []
+        iou_all = []
+        mask_all = []
+        pbar = tqdm(range(len(dataset)), ncols=90, desc="eval", position=0)
+        for i in pbar:
+            img, gt_mask, promt, promt_label, promt_type = dataset[i]
+
+            ###change format and device
+            img = torch.from_numpy(img).to(self.device).unsqueeze(1).float()
+            gt_mask = torch.from_numpy(gt_mask).to(self.device).unsqueeze(1).float()
+            promt = torch.from_numpy(promt).to(self.device)
+            promt_label = torch.from_numpy(promt_label).to(self.device)
+            
+            with torch.no_grad():
+                
+                if self.use_embedded:
+                    image_embedding = img
+                else:
+                    ####TODO####
+                    #把最长边resize成1024, 短边padding
+                    img = img.unsqueeze(1)
+                    # pdb.set_trace()
+                    img = self.transform.apply_image_torch(img)
+                    
+                    ###问题: 输入三通道
+                    img = img.repeat(1, 3, 1, 1)
+                    input_img = self.sam_model.preprocess(img)
+                    # pdb.set_trace()
+                    image_embedding = self.sam_model.image_encoder(input_img)
+
+            
+                ###构建promt
+                points, boxes, masks = None, None, None
+                
+                if promt_type[0] == 'box':
+                    boxes = promt
+                elif promt_type[0] == 'mask':
+                    masks = promt
+                elif promt_type[0] == 'points':
+                    points = promt, promt_label
+                elif promt_type[0] == 'single_point':
+                    points = promt, promt_label
+                else:
+                    raise NotImplementedError
+                                        
+                
+                #根据promt生成promt embedding
+                sparse_embeddings, dense_embeddings = self.sam_model.prompt_encoder(
+                    points=points,
+                    boxes=boxes,
+                    masks=masks,
+                )
+            
+                # pdb.set_trace()
+                low_res_masks, iou_predictions = self.sam_model.mask_decoder(
+                    image_embeddings=image_embedding,
+                    image_pe=self.sam_model.prompt_encoder.get_dense_pe(),
+                    sparse_prompt_embeddings=sparse_embeddings,
+                    dense_prompt_embeddings=dense_embeddings,
+                    multimask_output=False,
+                )
+                #mask
+                upscaled_masks = self.sam_model.postprocess_masks(low_res_masks, self.input_size, self.original_image_size).to(self.device)
+                binary_mask = normalize(threshold(upscaled_masks, 0.0, 0)).to(self.device)
+                mask_all.append(binary_mask.squeeze())
+
+                loss = self.loss_fn(binary_mask, gt_mask)
+
+                loss_all.append(loss.cpu().item())
+                iou_all.append(iou_predictions.cpu())
+
+        ###save model
+        # torch.save()
+        # pdb.set_trace()
+        mask_all = np.array(torch.concatenate(mask_all).cpu())
+        loss_all = np.array(loss_all).mean() 
+        iou_all = torch.concatenate(iou_all).mean().item()
+
+        mDice = metrics.eval_data_processing(6, mask_all)
+        print("test mDice:", mDice)
+        
+        return np.array(mDice).mean(), loss_all, iou_all
+

@@ -49,7 +49,7 @@ def parse_args():
     # #others
     # parser.add_argument('--seed', type=int, default=None)
     # parser.add_argument('--use_wandb', default=False, action='store_true')
-    # parser.add_argument('--test', default=False, action='store_true')
+    parser.add_argument('--test', default=False, action='store_true')
     parser.add_argument('--gpu_id', default=None, type=int)
 
     # #domain adversarial
@@ -84,6 +84,8 @@ def process_cfg(cfg, args=None, mode = ''):
     ###others
     if args.gpu_id is not None:
         cfg["device_id"] = args.gpu_id
+    if args.test:
+        cfg["test"]["test"] = True
     
     ###save name and dir
     if args.group_name is not None:

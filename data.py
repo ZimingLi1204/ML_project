@@ -7,11 +7,11 @@ import sys
 import pdb
 from tqdm import tqdm
 sys.path.append("..")
-from utils import get_promt
+from utils.utils import get_promt
 
 class Mydataset(Dataset):
 
-    def __init__(self, mode: torch.tensor, img : torch.tensor , mask: torch.tensor, name: list, slice_id: list, category: list, promt_type="single_point", load_from_disk=False):
+    def __init__(self, mode: np.array, img : np.array , mask: np.array, name: list, slice_id: list, category: list, promt_type="single_point", load_from_disk=False):
         '''
         mode: train/val/test
         data: N * 512 * 512.
@@ -34,6 +34,8 @@ class Mydataset(Dataset):
         return self.img.shape[0]
    
     def __getitem__(self, index):
+
+        print(index)
 
         img = self.img[index]
         # if self.load_from_disk:

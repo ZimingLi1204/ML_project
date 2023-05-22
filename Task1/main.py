@@ -101,5 +101,6 @@ if __name__ == "__main__":
     Second, change iter to the number of CT cases
     At last, change the generated mask variable
     '''
+    dice = metrics.Dice()
 
-    metrics.eval_data_processing(iter = 6, gen_mask = gen_mask)
+    dice.eval_data_processing(iter = 6, gen_mask = gen_mask)
