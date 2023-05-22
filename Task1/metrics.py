@@ -36,7 +36,7 @@ def dice_coefficient(y_true, y_pred):
     np.seterr(divide='ignore',invalid='ignore')
     y_true_f = np.asarray(y_true).astype(np.int32)
     y_pred_f = np.asarray(y_pred).astype(np.int32)
-    print(y_pred_f.shape)
+    #print(y_pred_f.shape)
     # Compute the intersection
     intersection = np.logical_and(y_true_f, y_pred_f)
     #y_pred_f = np.logical_and(y_pred_f, y_pred_f)
@@ -67,6 +67,7 @@ def eval_mdice(case_num, gen_mask):
         gen_mask: N * 512 * 512
     '''
     sumdice = float(0)
+    organ_count = 13
     #print(cate.shape)
     for i in range (1, 14):
         cate_CT = cate[listp[case_num]:listp[case_num+1]]
@@ -86,8 +87,10 @@ def eval_mdice(case_num, gen_mask):
         dice = dice_coefficient(gt_mask_cate, gen_mask_cate)
         print("Organ:", i, "Dice:", dice)
         sumdice += dice
+        if dice == 0:
+            organ_count -= 1
 
-    mdice = sumdice / 13
+    mdice = sumdice / organ_count
     print("mDice", mdice)
     return mdice
 
