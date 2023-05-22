@@ -36,7 +36,7 @@ def test(predictor, dataset : Mydataset):
         img = img.reshape(-1, 512, 512)
         img = img.repeat(3, axis=0).transpose(1, 2, 0).astype(np.uint8)
         # pdb.set_trace()
-        predictor.set_image(img)
+        predictor.set_image(img.astype("uint8"))
 
         '''The output masks in CxHxW format, where C is the
             number of masks, and (H, W) is the original image size.'''
@@ -95,13 +95,11 @@ if __name__ == "__main__":
 
 
 
-    # evaluation metrics
-    metrics.find_pointer()
-    #寻找每一个CT对应的编号
-    print(metrics.listp)
-    m_Dice = [0,0,0,0,0,0]
-    for i in range (6):
-        print("CT", i + 1, "_______________________________")
-        m_Dice[i] = metrics.eval_mdice(i, gen_mask)
-    print("Total mDice:", m_Dice)
-    #六个CT对应的m_Dice数据
+    '''
+    Evaluation Metrics:
+    First, adjust the filepath in metrics.py
+    Second, change iter to the number of CT cases
+    At last, change the generated mask variable
+    '''
+
+    metrics.eval_data_processing(iter = 6, gen_mask = gen_mask)
