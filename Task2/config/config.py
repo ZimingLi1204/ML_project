@@ -13,6 +13,7 @@ def parse_args():
     # parser.add_argument('--train_feature_length', type=int, default=None, help='how many days used before for features')
     # parser.add_argument('--train_length', type=int, default=None, help='how many trading days used before for features')
     # parser.add_argument('--use_dataloder', default=False, action='store_true', help='use dataloder or batch data ')
+    parser.add_argument('--promt_type', default=None, type=str)
     parser.add_argument('--use_embedded', default=False, action='store_true')
     parser.add_argument('--load_from_disk', default=False, action='store_true')
 
@@ -80,6 +81,8 @@ def process_cfg(cfg, args=None, mode = ''):
         cfg["data"]["use_embedded"] = True
     if args.load_from_disk:
         cfg["data"]["load_from_disk"] = True
+    if args.promt_type is not None:
+        cfg["data"]["promt_type"] = args.promt_type
 
     ###others
     if args.gpu_id is not None:
@@ -104,7 +107,7 @@ def process_cfg(cfg, args=None, mode = ''):
 
     ####data
     if cfg["data"]["use_embedded"]:
-        cfg["data"]["data_name"] = "vit-h_embedding_dataset1"
+        cfg["data"]["data_name"] = "vit-h_embedding_bc1"
 
 
     print(cfg)

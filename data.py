@@ -22,12 +22,13 @@ def embedding_single_img(img, transform, sam_model, device):
         # print(img.shape)
         # pdb.set_trace()
         # input_images = np.stack([transform.apply_image(img[x]) for x in range(img.shape[0])], axis=0)
-        img = transform.apply_image_torch(img.float())
+        input_img = transform.apply_image_torch(img.float())
         ###问题: 输入三通道
-        img = img.repeat(1, 3, 1, 1)
+        input_img = input_img.repeat(1, 3, 1, 1)
         
-        input_img = sam_model.preprocess(img) 
+        input_img = sam_model.preprocess(input_img) 
         image_embedding = sam_model.image_encoder(input_img)
+    # pdb.set_trace()
     image_embedding = np.array(image_embedding.cpu())
     return image_embedding
 
@@ -62,14 +63,13 @@ class Mydataset(Dataset):
         img = self.img[index]
         # if self.load_from_disk:
         #     img = img.copy()
-        promt, promt_label = None, None
+        promt, promt_label = None, -1
         promt_type = self.promt_type
 
         mask = self.mask[index]
         promt = get_promt(img, mask, promt_type)
         if isinstance(promt, tuple):
             promt, promt_label = promt
-
         return img, mask, promt, promt_label, promt_type
         
 
@@ -80,7 +80,7 @@ def load_data_train(cfg):
     info_train_path = os.path.join(cfg['data']['data_root'], cfg["data"]["info_name"] + '_' + "train")
     info_val_path = os.path.join(cfg['data']['data_root'],  cfg["data"]["info_name"] + '_' + "val")
     
-    train_dataset, val_dataset = load_train_data_from_dir(data_train_path, data_val_path, info_train_path, info_val_path, use_embedded=cfg['data']['use_embedded'], load_from_disk = cfg['data']['load_from_disk'])
+    train_dataset, val_dataset = load_train_data_from_dir(data_train_path, data_val_path, info_train_path, info_val_path, cfg, use_embedded=cfg['data']['use_embedded'])
     
     return train_dataset, val_dataset 
     
@@ -90,17 +90,18 @@ def load_data_test(cfg):
     data_test_path = os.path.join(cfg['data']['data_root'],  cfg["data"]["data_name"] + '_' + "test")
     info_test_path = os.path.join(cfg['data']['data_root'],  cfg["data"]["info_name"] + '_' + "test")
    
-    test_dataset = load_test_data_from_dir(data_test_path, info_test_path, use_embedded=cfg['data']['use_embedded'], load_from_disk = cfg['data']['load_from_disk'])
+    test_dataset = load_test_data_from_dir(data_test_path, info_test_path, cfg, use_embedded=cfg['data']['use_embedded'])
 
     return test_dataset
 
-def load_train_data_from_dir(data_train_path, data_val_path, info_train_path, info_val_path, use_embedded=False, load_from_disk = False):
+def load_train_data_from_dir(data_train_path, data_val_path, info_train_path, info_val_path, cfg, use_embedded=False):
     #根据路径提取并处理数据, 划分训练/验证集. 这部分数据都是有label的
 
-    print("loading img & mask......")
+    print("loading img & mask from {}".format(data_train_path))
     train_data = np.load(info_train_path+'.npz')
     val_data = np.load(info_val_path+'.npz')
-    
+    load_from_disk = cfg["data"]["load_from_disk"]
+
     if use_embedded:
         if load_from_disk:
             train_embedded_data = np.load(data_train_path+'.npy', mmap_mode='r')
@@ -110,7 +111,7 @@ def load_train_data_from_dir(data_train_path, data_val_path, info_train_path, in
             train_embedded_data = np.load(data_train_path+'.npy')
             val_embedded_data = np.load(data_val_path+'.npy')
 
-    print("loading name & slice_id & category......")
+    print("loading name & slice_id & category from {}".format(info_train_path))
     train_info = scio.loadmat(info_train_path+'.mat')
     val_info = scio.loadmat(info_val_path+'.mat')
 
@@ -130,23 +131,25 @@ def load_train_data_from_dir(data_train_path, data_val_path, info_train_path, in
     category_train = train_info["category"]
     category_val = val_info["category"]
    
-    mydataset_train = Mydataset(mode='train',img=img_train, mask=mask_train, name=name_train, slice_id=slice_id_train, category=category_train, load_from_disk=load_from_disk)
-    mydataset_val = Mydataset(mode='train', img=img_val, mask=mask_val, name=name_val, slice_id=slice_id_val, category=category_val, load_from_disk=load_from_disk)
+    mydataset_train = Mydataset(mode='train',img=img_train, mask=mask_train, name=name_train, slice_id=slice_id_train, category=category_train, load_from_disk=load_from_disk, promt_type=cfg["data"]["promt_type"])
+    mydataset_val = Mydataset(mode='train', img=img_val, mask=mask_val, name=name_val, slice_id=slice_id_val, category=category_val, load_from_disk=load_from_disk, promt_type=cfg["data"]["promt_type"])
 
     return mydataset_train, mydataset_val
 
-def load_test_data_from_dir(data_test_path, info_test_path, use_embedded=False, load_from_disk = False) -> Mydataset:
+def load_test_data_from_dir(data_test_path, info_test_path, cfg, use_embedded=False) -> Mydataset:
     #根据路径提取并处理数据, 生成测试集, 有label
 
-    print("loading test img & mask......")
+    print("loading test img & mask from {}".format(data_test_path))
     test_data = np.load(info_test_path + '.npz')
+    load_from_disk = cfg["data"]["load_from_disk"]
+
     if use_embedded:
         if load_from_disk:
             test_embedded_data = np.load(data_test_path+'.npy', mmap_mode='r')
         else:
             test_embedded_data = np.load(data_test_path+'.npy')
 
-    print("loading test name & slice_id & category......")
+    print("loading test name & slice_id & category from {}".format(info_test_path))
     test_info = scio.loadmat(info_test_path + '.mat')
 
     # device = "cuda:1"
@@ -166,7 +169,7 @@ def load_test_data_from_dir(data_test_path, info_test_path, use_embedded=False, 
     category_test = test_info["category"]
 
     mydataset_test = Mydataset(mode='test', img=img_test, mask=mask_test, name=name_test, slice_id=slice_id_test,
-                                category=category_test, load_from_disk=load_from_disk)
+                                category=category_test, load_from_disk=load_from_disk, promt_type=cfg["data"]["promt_type"])
 
 
     return mydataset_test
@@ -191,48 +194,45 @@ def save_embedded_data():
     
     sam_checkpoint = "pretrain_model/sam_vit_h.pth"
     sam_model = sam_model_registry['vit_h'](checkpoint=sam_checkpoint).to(device)
-    transform = ResizeLongestSide(train_img.shape[-1])
+    transform = ResizeLongestSide(1024)
 
     ####可以根据自己的gpu显存大小改batch size
-    bc = 3
+    bc = 1
 
     #training_data
 
-    pbar = tqdm(range(train_img.shape[0]//bc), ncols=90, desc='Train')
-    train_data_embedded = []
-    for i in pbar:
-        pdb.set_trace()
-        train_data_embedded.append(embedding_single_img(train_img[bc*i: bc*(i+1)], transform=transform, sam_model=sam_model, device=device))
-    if bc * (train_img.shape[0]//bc) < train_img.shape[0]:
-        train_data_embedded.append(embedding_single_img(train_img[bc * (train_img.shape[0]//bc):], transform=transform, sam_model=sam_model, device=device))
-    train_data_embedded = np.concatenate(train_data_embedded, axis=0)
+    # pbar = tqdm(range(train_img.shape[0]//bc), ncols=90, desc='Train')
+    # train_data_embedded = np.zeros((train_img.shape[0], 256, 64, 64))
+    # for i in pbar:
+    #     train_data_embedded[bc*i: bc*(i+1)] = embedding_single_img(train_img[bc*i: bc*(i+1)], transform=transform, sam_model=sam_model, device=device)
+    # if bc * (val_img.shape[0]//bc) < val_img.shape[0]:
+    #     train_data_embedded[bc * (val_img.shape[0]//bc):] = (embedding_single_img(train_img[bc * (train_img.shape[0]//bc):], transform=transform, sam_model=sam_model, device=device))
     
-    train_data_newdir = os.path.join(data_root, "vit-h_embedding_bc1_train.npy")
+    # train_data_newdir = os.path.join(data_root, "vit-h_embedding_bc1_train.npy")
    
-    np.save(train_data_newdir, train_data_embedded, allow_pickle=True)
+    # np.save(train_data_newdir, train_data_embedded, allow_pickle=True)
 
-    #val_img
+    # #val_img
 
-    pbar = tqdm(range(val_img.shape[0]//bc), ncols=90, desc='Val')
-    val_data_embedded = []
-    for i in pbar:
-        val_data_embedded.append(embedding_single_img(val_img[bc*i: bc*(i+1)], transform=transform, sam_model=sam_model, device=device))
-    if bc * (val_img.shape[0]//bc) < val_img.shape[0]:
-        val_data_embedded.append(embedding_single_img(val_img[bc * (val_img.shape[0]//bc):], transform=transform, sam_model=sam_model, device=device))
-    val_data_embedded = np.concatenate(val_data_embedded, axis=0)
+    # pbar = tqdm(range(val_img.shape[0]//bc), ncols=90, desc='Val')
+    # val_data_embedded = np.zeros((val_img.shape[0], 256, 64, 64))
+    # for i in pbar:
+    #     val_data_embedded[bc*i: bc*(i+1)] = embedding_single_img(val_img[bc*i: bc*(i+1)], transform=transform, sam_model=sam_model, device=device)
+    # if bc * (val_img.shape[0]//bc) < val_img.shape[0]:
+    #     val_data_embedded[bc * (val_img.shape[0]//bc):] = (embedding_single_img(val_img[bc * (val_img.shape[0]//bc):], transform=transform, sam_model=sam_model, device=device))
+    # # val_data_embedded = np.concatenate(val_data_embedded, axis=0)
     
-    val_data_newdir = os.path.join(data_root, "vit-h_embedding_bc1_val.npy")
-    np.save(val_data_newdir, val_data_embedded, allow_pickle=True)
+    # val_data_newdir = os.path.join(data_root, "vit-h_embedding_bc1_val.npy")
+    # np.save(val_data_newdir, val_data_embedded, allow_pickle=True)
 
-    #test_img
+    # #test_img
 
     pbar = tqdm(range(test_img.shape[0]//bc), ncols=90, desc='Test')
-    test_data_embedded = []
+    test_data_embedded = np.zeros((test_img.shape[0], 256, 64, 64))
     for i in pbar:
-        test_data_embedded.append(embedding_single_img(test_img[bc*i: bc*(i+1)], transform=transform, sam_model=sam_model, device=device))
+        test_data_embedded[bc*i: bc*(i+1)] = embedding_single_img(test_img[bc*i: bc*(i+1)], transform=transform, sam_model=sam_model, device=device)
     if bc * (test_img.shape[0]//bc) < test_img.shape[0]:
-        test_data_embedded.append(embedding_single_img(test_img[bc * (test_img.shape[0]//bc):], transform=transform, sam_model=sam_model, device=device))
-    test_data_embedded = np.concatenate(test_data_embedded, axis=0)
+        test_data_embedded[bc * (test_img.shape[0]//bc):] = (embedding_single_img(test_img[bc * (test_img.shape[0]//bc):], transform=transform, sam_model=sam_model, device=device))
     
     test_data_newdir = os.path.join(data_root, "vit-h_embedding_bc1_test.npy")
     np.save(test_data_newdir, test_data_embedded, allow_pickle=True)

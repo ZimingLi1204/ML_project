@@ -41,14 +41,14 @@ if __name__ == '__main__':
     if cfg["test"]["test"]:
         print("#####Loading test data#######")
         test_dataset = load_data_test(cfg)
-        test_dataloader = DataLoader(test_dataset, batch_size=cfg['test']['batch_size'], shuffle=False, num_workers=4)
+        # test_dataloader = DataLoader(test_dataset, batch_size=cfg['test']['batch_size'], shuffle=False, num_workers=4)
         info = {"name": test_dataset.name, "category": test_dataset.category}
         metrics = Dice(mask_gt=test_dataset.mask, info_gt=info)
     else:
         print("#####Loading train data#######")
         train_dataset, val_dataset = load_data_train(cfg)
         train_dataloader = DataLoader(train_dataset, batch_size=cfg['train']['batch_size'], shuffle=True, num_workers=4)
-        val_dataloader = DataLoader(val_dataset, batch_size=cfg['test']['batch_size'], shuffle=False, num_workers=4)
+        # val_dataloader = DataLoader(val_dataset, batch_size=cfg['test']['batch_size'], shuffle=False, num_workers=4)
         info = {"name": val_dataset.name, "category": val_dataset.category}
         metrics = Dice(mask_gt=val_dataset.mask, info_gt=info)
 

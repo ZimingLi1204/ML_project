@@ -1,7 +1,7 @@
 ####根据输出的所有mask(2d)计算dice
 import numpy as np
 import scipy.io as scio
-
+import pdb
 
 '''
 Before you use: 
@@ -59,7 +59,7 @@ class Dice():
         self.CT_idx = self.CT_idx.reshape(-1)
         self.listp = [0] * 30
         print("data loaded")
-
+        # pdb.set_trace()
 
     def find_pointer(self):
         j = 1
@@ -93,6 +93,7 @@ class Dice():
             # breakpoint()
             gt_mask_cate = gt_mask_CT[location_list, :, :]
             gen_mask_cate = gen_mask_CT[location_list, :, :]
+            # pdb.set_trace()
             #assert gen_mask_cate.shape[0] == gt_mask_cate.shape[0] == len(location_list)
             if (gt_mask_cate.shape[0] != 0):
                 organ_num += 1

@@ -88,7 +88,8 @@ class finetune_sam():
                 img = img.to(self.device)
                 gt_mask = gt_mask.to(self.device).unsqueeze(1).float()
                 promt = promt.to(self.device)
-                promt_label = promt_label.to(self.device)
+                if promt_label != -1:
+                    promt_label = promt_label.to(self.device)
 
                 # pdb.set_trace()
                 with torch.no_grad():
@@ -111,13 +112,16 @@ class finetune_sam():
                     ###构建promt
                     points, boxes, masks = None, None, None
                     
-                    if promt_type[0] == 'box':
+                    if isinstance(promt_type, list):
+                        promt_type = promt_type[0]
+
+                    if promt_type == 'box':
                         boxes = promt
-                    elif promt_type[0] == 'mask':
+                    elif promt_type == 'mask':
                         masks = promt
-                    elif promt_type[0] == 'points':
+                    elif promt_type == 'points':
                         points = promt, promt_label
-                    elif promt_type[0] == 'single_point':
+                    elif promt_type == 'single_point':
                         points = promt, promt_label
                     else:
                         raise NotImplementedError
@@ -168,7 +172,6 @@ class finetune_sam():
         mask_all = []
 
         pbar = tqdm(range(len(dataset)), ncols=90, desc="eval", position=0)
-
         for i in pbar:
 
             img, gt_mask, promt, promt_label, promt_type = dataset[i]
@@ -177,7 +180,8 @@ class finetune_sam():
             img = torch.from_numpy(img).to(self.device).unsqueeze(0).float()
             gt_mask = torch.from_numpy(gt_mask).to(self.device).unsqueeze(0).float()
             promt = torch.from_numpy(promt).to(self.device).unsqueeze(0)
-            promt_label = torch.from_numpy(promt_label).to(self.device).unsqueeze(0)
+            if promt_label != -1:
+                promt_label = torch.from_numpy(promt_label).to(self.device).unsqueeze(0)
 
             with torch.no_grad():
                 
@@ -258,16 +262,19 @@ class finetune_sam():
         ###调用task1的test 函数
         loss_all = []
         iou_all = []
-        mask_all = []
+        mask_all = np.zeros([len(dataset), self.original_image_size[0], self.original_image_size[1]])
+
         pbar = tqdm(range(len(dataset)), ncols=90, desc="eval", position=0)
         for i in pbar:
+
             img, gt_mask, promt, promt_label, promt_type = dataset[i]
 
             ###change format and device
             img = torch.from_numpy(img).to(self.device).unsqueeze(0).float()
             gt_mask = torch.from_numpy(gt_mask).to(self.device).unsqueeze(0).float()
             promt = torch.from_numpy(promt).to(self.device).unsqueeze(0)
-            promt_label = torch.from_numpy(promt_label).to(self.device).unsqueeze(0)
+            if promt_label != -1:
+                promt_label = torch.from_numpy(promt_label).to(self.device).unsqueeze(0)
             
             # pdb.set_trace()
             with torch.no_grad():
@@ -279,14 +286,15 @@ class finetune_sam():
                     #把最长边resize成1024, 短边padding
                     img = img.unsqueeze(1)
                     # pdb.set_trace()
-                    img = self.transform.apply_image_torch(img)
+                    input_img = self.transform.apply_image_torch(img)
                     
                     ###问题: 输入三通道
-                    img = img.repeat(1, 3, 1, 1)
-                    input_img = self.sam_model.preprocess(img)
+                    input_img = input_img.repeat(1, 3, 1, 1)
+                    input_img = self.sam_model.preprocess(input_img)
                     # pdb.set_trace()
                     image_embedding = self.sam_model.image_encoder(input_img)
-
+                
+                # pdb.set_trace()
             
                 ###构建promt
                 points, boxes, masks = None, None, None
@@ -298,9 +306,7 @@ class finetune_sam():
                     boxes = promt
                 elif promt_type == 'mask':
                     masks = promt
-                elif promt_type == 'points':
-                    points = promt, promt_label
-                elif promt_type == 'single_point':
+                elif promt_type == 'points' or promt_type == 'single_point':
                     points = promt, promt_label
                 else:
                     raise NotImplementedError
@@ -324,9 +330,10 @@ class finetune_sam():
                 )
                 #mask
                 upscaled_masks = self.sam_model.postprocess_masks(low_res_masks, self.input_size, self.original_image_size).to(self.device)
+               
                 binary_mask = normalize(threshold(upscaled_masks, 0.0, 0)).to(self.device).squeeze()
-
-                mask_all.append(binary_mask)
+                # pdb.set_trace()
+                mask_all[i] = (binary_mask.cpu())
 
                 loss = self.loss_fn(binary_mask, gt_mask.squeeze())
 
@@ -336,13 +343,15 @@ class finetune_sam():
         ###save model
         # torch.save()
         
-        mask_all = np.array(torch.stack(mask_all, dim=0).cpu())
+        
         loss_all = np.array(loss_all).mean() 
         iou_all = torch.concatenate(iou_all).mean().item()
 
         # pdb.set_trace()
         mDice = metrics.eval_data_processing(6, mask_all)
         print("test mDice:", mDice)
+        print("test loss:", loss_all)
+        print("test iou:", iou_all)
         
         return np.array(mDice).mean(), loss_all, iou_all
 

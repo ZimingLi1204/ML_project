@@ -51,8 +51,6 @@ class Dice():
         self.listp = [0] * 30
         print("data loaded")
 
-
-
     def find_pointer(self):
         j = 1
         i = 0

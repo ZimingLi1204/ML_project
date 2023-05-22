@@ -7,4 +7,8 @@ log
 /pre_processed_data_train_1-10
 .idea/
 /BTCV*
+/BTCV
+/Task1/result
+/Task1/eval.py
+test.py
 __pycache__

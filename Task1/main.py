@@ -11,7 +11,7 @@ import numpy as np
 import os
 import metrics
 import pdb
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 def test(predictor, dataset : Mydataset):
     '''
@@ -28,7 +28,7 @@ def test(predictor, dataset : Mydataset):
         # 这里不确定Mydataset __get_item__方法是否会保持数据集原本顺序
         img = dataset.img[index, :, :]
         gt_mask = dataset.mask[index, :, :]
-        promt_type = dataset.promt_type
+        promt_type = 'box'
         promt = DT.get_promt(img, gt_mask, promt_type)
 
         # 加载图片
@@ -65,7 +65,7 @@ def test(predictor, dataset : Mydataset):
         assert mask.shape == (1, 512, 512)
 
         gen_mask_array = np.append(gen_mask_array, mask, axis=0)
-        print(mask.sum(), gt_mask.sum())
+        #tqdm.write(mask.sum(), np.int32(gt_mask.sum()))
 
     return gen_mask_array
 
@@ -81,7 +81,7 @@ if __name__ == "__main__":
     predictor = SamPredictor(sam)
     print("model loaded_______________________________________________________")
 
-    data_test_path = "../BTCV_dataset1/pre_processed_dataset1_test" ####!!!!!!!一定要把文件夹名字改了!!!!!!
+    data_test_path = "../BTCV/pre_processed_dataset1_test" ####!!!!!!!一定要把文件夹名字改了!!!!!!
     dataset = DT.load_test_data_from_dir(info_test_path = data_test_path, data_test_path=data_test_path)
     print("dataset loaded______________________________________________________")
 
@@ -89,7 +89,7 @@ if __name__ == "__main__":
 
     if not os.path.exists("result"):
         os.mkdir("result")
-    save_path = "result/mask_generated_from_testset"
+    save_path = "result/prompt_1"
     np.savez_compressed(save_path, mask=gen_mask)
     print("result saved in ({}) _____________________".format(save_path))
 

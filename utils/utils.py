@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import os
 import random
+import cv2
 
 def set_seed(seed, torch_deterministic = False):
     if seed == -1 and torch_deterministic:
@@ -37,7 +38,10 @@ def get_promt(img, mask, promt_type = "single_point", point_num = 1, box_num = 1
         label = np.array([mask[coord[0, 0], coord[0, 1]] for i in range(point_num)])
         promt = coord, label
     elif promt_type == "box":   # 边界框  形如XYXY
-        coord = np.random.randint(low=1, high=512, size=4)
+        mask=mask.astype( np.uint8 )
+        retval, labels, stats, centroids = cv2.connectedComponentsWithStats(mask, connectivity=4)
+        #print(stats)
+        coord = np.array([stats[1][0], stats[1][1], stats[1][0]+stats[1][2], stats[1][1]+stats[1][3]])
         promt = coord
     elif promt_type == "mask":   # mask类型prompt
         pass
