@@ -4,13 +4,14 @@ import torch
 
 sys.path.append("..")
 from segment_anything import sam_model_registry, SamPredictor
-from Task2.data import Mydataset
-import Task2.data as DT
+from data import Mydataset
+import data as DT
 import cv2
 import numpy as np
 import os
-import Task1.metrics
-
+import metrics
+import pdb
+from tqdm import tqdm
 
 def test(predictor, dataset : Mydataset):
     '''
@@ -22,7 +23,7 @@ def test(predictor, dataset : Mydataset):
     gen_mask_array = np.zeros([0, 512, 512])
 
 
-    for index in range(len(dataset)):
+    for index in tqdm(range(len(dataset)), ncols=90):
 
         # 这里不确定Mydataset __get_item__方法是否会保持数据集原本顺序
         img = dataset.img[index, :, :]
@@ -33,7 +34,8 @@ def test(predictor, dataset : Mydataset):
         # 加载图片
         # sam模型的输入需要img转化成3通道
         img = img.reshape(-1, 512, 512)
-        img = img.repeat(3, axis=0).transpose(1, 2, 0)
+        img = img.repeat(3, axis=0).transpose(1, 2, 0).astype(np.uint8)
+        # pdb.set_trace()
         predictor.set_image(img)
 
         '''The output masks in CxHxW format, where C is the
@@ -63,13 +65,13 @@ def test(predictor, dataset : Mydataset):
         assert mask.shape == (1, 512, 512)
 
         gen_mask_array = np.append(gen_mask_array, mask, axis=0)
-        print(gen_mask_array.shape)
+        print(mask.sum(), gt_mask.sum())
 
     return gen_mask_array
 
 if __name__ == "__main__":
     
-    sam_checkpoint = "pretrain_model/sam_vit_h_4b8939.pth"
+    sam_checkpoint = "../pretrain_model/sam_vit_h.pth"####!!!!!!!一定要把pretrain model名字改了!!!!!!
     model_type = "vit_h"
 
     device = "cuda"
@@ -79,13 +81,13 @@ if __name__ == "__main__":
     predictor = SamPredictor(sam)
     print("model loaded_______________________________________________________")
 
-    data_test_path = "BTCV/pre_processed_dataset1_test"
-    dataset = DT.load_test_data_from_dir(data_test_path=data_test_path)
+    data_test_path = "../BTCV_dataset1/pre_processed_dataset1_test" ####!!!!!!!一定要把文件夹名字改了!!!!!!
+    dataset = DT.load_test_data_from_dir(info_test_path = data_test_path, data_test_path=data_test_path)
     print("dataset loaded______________________________________________________")
 
     gen_mask = test(predictor=predictor, dataset=dataset)
 
-    if not os.path.exists("./result"):
+    if not os.path.exists("result"):
         os.mkdir("result")
     save_path = "result/mask_generated_from_testset"
     np.savez_compressed(save_path, mask=gen_mask)
@@ -94,12 +96,12 @@ if __name__ == "__main__":
 
 
     # evaluation metrics
-    Task1.metrics.find_pointer()
+    metrics.find_pointer()
     #寻找每一个CT对应的编号
-    print(Task1.metrics.listp)
+    print(metrics.listp)
     m_Dice = [0,0,0,0,0,0]
     for i in range (6):
         print("CT", i + 1, "_______________________________")
-        m_Dice[i] = Task1.metrics.eval_mdice(i, gen_mask)
+        m_Dice[i] = metrics.eval_mdice(i, gen_mask)
     print("Total mDice:", m_Dice)
     #六个CT对应的m_Dice数据

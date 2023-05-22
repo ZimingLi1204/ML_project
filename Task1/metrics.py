@@ -3,10 +3,10 @@ import numpy as np
 import scipy.io as scio
 
 
-test_set = np.load('../pre_processed_data1/pre_processed_dataset1_test.npz')
+test_set = np.load('../BTCV_dataset1/pre_processed_dataset1_test.npz')
 mask_groundtruth = test_set["mask"]
 
-info = scio.loadmat('../pre_processed_data1/pre_processed_dataset1_test.mat')
+info = scio.loadmat('../BTCV_dataset1/pre_processed_dataset1_test.mat')
 cate = info["category"]
 cate = cate[0, :]
 CT_idx = np.int32(info["name"])
@@ -55,6 +55,7 @@ def find_pointer():
            listp[j] = i
            j += 1
     listp[j] = i + 1
+    print(listp, CT_idx)
 
 # 35 - 40 CT
 def eval_mdice(case_num, gen_mask):
@@ -86,6 +87,7 @@ def eval_mdice(case_num, gen_mask):
     mdice = sumdice / 13
     print("mDice", i, mdice)
     return mdice
+
 
 
 
