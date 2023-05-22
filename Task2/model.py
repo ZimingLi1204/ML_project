@@ -36,6 +36,7 @@ class finetune_sam():
         self.loss = cfg['train']['loss']
         self.lr = cfg['train']['learning_rate']
 
+
         if self.optim == 'Adam':
             self.optimizer = torch.optim.Adam(self.sam_model.mask_decoder.parameters(), lr=self.lr, weight_decay=cfg['train']['weight_decay']) 
         elif self.optim == 'AdamW':
@@ -68,8 +69,8 @@ class finetune_sam():
         print("############start training################")
         for epoch in tqdm(range(self.cfg['train']['max_epoch']), ncols=90, desc="epoch", position=1):
             
-            ###eval结果并save model
-            result = self.val(val_dataset, metric=metrics)
+            # ###eval结果并save model
+            result = self.val(val_dataset, metrics=metrics)
             dice_val, loss_val, iou_val = result
             if self.use_tensorboard:
                 writer.add_scalar('loss/val', loss_val, epoch)
@@ -89,6 +90,7 @@ class finetune_sam():
                 promt = promt.to(self.device)
                 promt_label = promt_label.to(self.device)
 
+                # pdb.set_trace()
                 with torch.no_grad():
                     
                     if self.use_embedded:
@@ -164,14 +166,19 @@ class finetune_sam():
         loss_all = []
         iou_all = []
         mask_all = []
+
         pbar = tqdm(range(len(dataset)), ncols=90, desc="eval", position=0)
+
         for i in pbar:
+
             img, gt_mask, promt, promt_label, promt_type = dataset[i]
-            img = img.to(self.device)
-            gt_mask = gt_mask.to(self.device).unsqueeze(1).float()
-            promt = promt.to(self.device)
-            promt_label = promt_label.to(self.device)
-            
+
+            ###change format and device
+            img = torch.from_numpy(img).to(self.device).unsqueeze(0).float()
+            gt_mask = torch.from_numpy(gt_mask).to(self.device).unsqueeze(0).float()
+            promt = torch.from_numpy(promt).to(self.device).unsqueeze(0)
+            promt_label = torch.from_numpy(promt_label).to(self.device).unsqueeze(0)
+
             with torch.no_grad():
                 
                 if self.use_embedded:
@@ -193,16 +200,20 @@ class finetune_sam():
                 ###构建promt
                 points, boxes, masks = None, None, None
                 
-                if promt_type[0] == 'box':
+                if isinstance(promt_type, list):
+                    promt_type = promt_type[0]
+
+                if promt_type == 'box':
                     boxes = promt
-                elif promt_type[0] == 'mask':
+                elif promt_type == 'mask':
                     masks = promt
-                elif promt_type[0] == 'points':
+                elif promt_type == 'points':
                     points = promt, promt_label
-                elif promt_type[0] == 'single_point':
+                elif promt_type == 'single_point':
                     points = promt, promt_label
                 else:
                     raise NotImplementedError
+                                        
                                         
                 
                 #根据promt生成promt embedding
@@ -222,10 +233,11 @@ class finetune_sam():
                 )
                 #mask
                 upscaled_masks = self.sam_model.postprocess_masks(low_res_masks, self.input_size, self.original_image_size).to(self.device)
-                binary_mask = normalize(threshold(upscaled_masks, 0.0, 0)).to(self.device)
+                binary_mask = normalize(threshold(upscaled_masks, 0.0, 0)).to(self.device).squeeze()
+                
                 mask_all.append(binary_mask)
 
-                loss = self.loss_fn(binary_mask, gt_mask)
+                loss = self.loss_fn(binary_mask, gt_mask.squeeze())
 
                 loss_all.append(loss.cpu().item())
                 iou_all.append(iou_predictions.cpu())
@@ -233,7 +245,7 @@ class finetune_sam():
         ###save model
         # torch.save()
         # pdb.set_trace()
-        mask_all = np.array(torch.concatenate(mask_all).cpu())
+        mask_all = np.array(torch.stack(mask_all, dim=0).cpu())
         loss_all = np.array(loss_all).mean() 
         iou_all = torch.concatenate(iou_all).mean().item()
 
@@ -252,11 +264,12 @@ class finetune_sam():
             img, gt_mask, promt, promt_label, promt_type = dataset[i]
 
             ###change format and device
-            img = torch.from_numpy(img).to(self.device).unsqueeze(1).float()
-            gt_mask = torch.from_numpy(gt_mask).to(self.device).unsqueeze(1).float()
-            promt = torch.from_numpy(promt).to(self.device)
-            promt_label = torch.from_numpy(promt_label).to(self.device)
+            img = torch.from_numpy(img).to(self.device).unsqueeze(0).float()
+            gt_mask = torch.from_numpy(gt_mask).to(self.device).unsqueeze(0).float()
+            promt = torch.from_numpy(promt).to(self.device).unsqueeze(0)
+            promt_label = torch.from_numpy(promt_label).to(self.device).unsqueeze(0)
             
+            # pdb.set_trace()
             with torch.no_grad():
                 
                 if self.use_embedded:
@@ -278,19 +291,23 @@ class finetune_sam():
                 ###构建promt
                 points, boxes, masks = None, None, None
                 
-                if promt_type[0] == 'box':
+                if isinstance(promt_type, list):
+                    promt_type = promt_type[0]
+
+                if promt_type == 'box':
                     boxes = promt
-                elif promt_type[0] == 'mask':
+                elif promt_type == 'mask':
                     masks = promt
-                elif promt_type[0] == 'points':
+                elif promt_type == 'points':
                     points = promt, promt_label
-                elif promt_type[0] == 'single_point':
+                elif promt_type == 'single_point':
                     points = promt, promt_label
                 else:
                     raise NotImplementedError
                                         
                 
                 #根据promt生成promt embedding
+                # pdb.set_trace()
                 sparse_embeddings, dense_embeddings = self.sam_model.prompt_encoder(
                     points=points,
                     boxes=boxes,
@@ -307,21 +324,23 @@ class finetune_sam():
                 )
                 #mask
                 upscaled_masks = self.sam_model.postprocess_masks(low_res_masks, self.input_size, self.original_image_size).to(self.device)
-                binary_mask = normalize(threshold(upscaled_masks, 0.0, 0)).to(self.device)
-                mask_all.append(binary_mask.squeeze())
+                binary_mask = normalize(threshold(upscaled_masks, 0.0, 0)).to(self.device).squeeze()
 
-                loss = self.loss_fn(binary_mask, gt_mask)
+                mask_all.append(binary_mask)
+
+                loss = self.loss_fn(binary_mask, gt_mask.squeeze())
 
                 loss_all.append(loss.cpu().item())
                 iou_all.append(iou_predictions.cpu())
 
         ###save model
         # torch.save()
-        # pdb.set_trace()
-        mask_all = np.array(torch.concatenate(mask_all).cpu())
+        
+        mask_all = np.array(torch.stack(mask_all, dim=0).cpu())
         loss_all = np.array(loss_all).mean() 
         iou_all = torch.concatenate(iou_all).mean().item()
 
+        # pdb.set_trace()
         mDice = metrics.eval_data_processing(6, mask_all)
         print("test mDice:", mDice)
         
