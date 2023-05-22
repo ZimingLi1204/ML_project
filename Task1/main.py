@@ -68,6 +68,7 @@ def test(predictor, dataset : Mydataset):
     return gen_mask_array
 
 if __name__ == "__main__":
+    
     sam_checkpoint = "pretrain_model/sam_vit_h_4b8939.pth"
     model_type = "vit_h"
 
@@ -90,7 +91,15 @@ if __name__ == "__main__":
     np.savez_compressed(save_path, mask=gen_mask)
     print("result saved in ({}) _____________________".format(save_path))
 
-    ###TODO###
-    # evaluation metrics
-    # return eval_mDice(gen_mask, gt_mask)
 
+
+    # evaluation metrics
+    Task1.metrics.find_pointer()
+    #寻找每一个CT对应的编号
+    print(Task1.metrics.listp)
+    m_Dice = [0,0,0,0,0,0]
+    for i in range (6):
+        print("CT", i + 1, "_______________________________")
+        m_Dice[i] = Task1.metrics.eval_mdice(i, gen_mask)
+    print("Total mDice:", m_Dice)
+    #六个CT对应的m_Dice数据
