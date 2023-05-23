@@ -8,12 +8,12 @@ python main.py --group_name finetune --save_name bc32_weighit_decay0 \
 
 ###test
 python main.py --group_name debug --save_name test_dice \
---use_embedded --promt_type single_point \
---gpu_id 0 --test
+--use_embedded --promt_type box \
+--gpu_id 1 --test
 
 python main.py --group_name debug --save_name test_dice \
 --promt_type box \
---gpu_id 2 --test
+--gpu_id 3 --test
 
 python main.py --group_name debug --save_name debug \
 --batch_size 2 --weight_decay 0 --use_embedded \

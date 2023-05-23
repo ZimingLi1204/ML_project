@@ -43,7 +43,7 @@ if __name__ == '__main__':
         test_dataset = load_data_test(cfg)
         # test_dataloader = DataLoader(test_dataset, batch_size=cfg['test']['batch_size'], shuffle=False, num_workers=4)
         info = {"name": test_dataset.name, "category": test_dataset.category}
-        metrics = Dice(mask_gt=test_dataset.mask, info_gt=info)
+        metrics = Dice()
     else:
         print("#####Loading train data#######")
         train_dataset, val_dataset = load_data_train(cfg)

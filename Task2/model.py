@@ -51,11 +51,11 @@ class finetune_sam():
         self.cfg = cfg
         self.transform = ResizeLongestSide(self.cfg['data']['input_size'][0])
 
-        print("finish initialize model class")
-
         #设定image size
         self.input_size = (self.cfg['data']['input_size'][0], self.cfg['data']['input_size'][1])
         self.original_image_size = (self.cfg['data']['img_size'][0], self.cfg['data']['img_size'][1])
+
+        print("finish initialize model class")
 
     def train(self, dataloader, val_dataset, metrics=None):
 
@@ -332,13 +332,14 @@ class finetune_sam():
                 upscaled_masks = self.sam_model.postprocess_masks(low_res_masks, self.input_size, self.original_image_size).to(self.device)
                
                 binary_mask = normalize(threshold(upscaled_masks, 0.0, 0)).to(self.device).squeeze()
-                # pdb.set_trace()
+                
                 mask_all[i] = (binary_mask.cpu())
 
-                loss = self.loss_fn(binary_mask, gt_mask.squeeze())
+                loss = self.loss_fn(upscaled_masks.squeeze(), gt_mask.squeeze())
 
                 loss_all.append(loss.cpu().item())
                 iou_all.append(iou_predictions.cpu())
+                # pdb.set_trace()
 
         ###save model
         # torch.save()
