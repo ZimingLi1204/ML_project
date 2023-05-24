@@ -1,9 +1,10 @@
-python main.py --group_name finetune_box --save_name bc4_weighit_decay1e-3_adam_noembed \
---batch_size 4  --weight_decay 1.e-3 --optimizer Adam --promt_type box \
---gpu_id 0
+python main.py --group_name finetune_box --save_name bc32_weighit_decay1e-3_adam \
+--batch_size 32  --weight_decay 1.e-3 --optimizer Adam --promt_type box \
+--use_embedded \
+--gpu_id 3
 
 python main.py --group_name finetune --save_name bc32_weighit_decay0 \
---batch_size 2 --weight_decay 0 \
+--batch_size 2 --weight_decay 1.e-3 \
 --gpu_id 1
 
 ###test
