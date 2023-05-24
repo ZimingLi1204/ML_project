@@ -87,8 +87,14 @@ if __name__ == "__main__":
     cfg = yaml.load(cfg_file, Loader=yaml.SafeLoader)
     cfg_file.close()
 
-    data_test_path = "../BTCV_dataset1/pre_processed_dataset1_test" ####!!!!!!!一定要把文件夹名字改了!!!!!!
-    dataset = DT.load_test_data_from_dir(info_test_path = data_test_path, data_test_path=data_test_path, cfg=cfg)
+    info_test_path = "../BTCV_dataset1/pre_processed_dataset1_test" ####!!!!!!!一定要把文件夹名字改了!!!!!!
+    if cfg['data']["use_embedded"]:
+        data_test_path = "../BTCV_dataset1/vit-h_embedding_bc1_test" 
+    else:
+        data_test_path = info_test_path
+
+    dataset = DT.load_test_data_from_dir(info_test_path = info_test_path, data_test_path=data_test_path, cfg=cfg)
+
     print("dataset loaded______________________________________________________")
 
     gen_mask = test(predictor=predictor, dataset=dataset)
