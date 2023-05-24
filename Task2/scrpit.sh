@@ -13,7 +13,7 @@ python main.py --group_name debug --save_name test_dice \
 
 python main.py --group_name debug --save_name test_dice \
 --promt_type box \
---gpu_id 3 --test
+--gpu_id 2 --test
 
 python main.py --group_name debug --save_name debug \
 --batch_size 2 --weight_decay 0 --use_embedded \

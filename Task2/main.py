@@ -5,8 +5,10 @@ from utils.utils import set_seed
 from data import load_data_train, load_data_test
 from torch.utils.data import DataLoader
 from utils.metrics import Dice
+from time import sleep
 
 if __name__ == '__main__':
+    # sleep(60*60*4)
     #load cfg
     cfg_file = open('config/cfg.yaml')
     cfg = yaml.load(cfg_file, Loader=yaml.SafeLoader)

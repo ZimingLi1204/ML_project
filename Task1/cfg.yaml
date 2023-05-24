@@ -1,0 +1,40 @@
+random_seed: 9999
+debug: False
+# use_wandb: False
+device: cuda
+device_id: 2
+
+train:
+  use_tensorboard: True
+  log_dir: 'log'
+  group: 'debug'
+  save_name: 'debug'
+  learning_rate: 8.e-4
+  optimizer: 'AdamW'
+  batch_size: 4
+  weight_decay: 1.e-3
+  loss: 'MSE'
+  max_epoch: 10
+  
+
+test:
+  test: False
+  batch_size: 1
+
+model:
+  model_root: ../pretrain_model
+  model_type: vit_h
+
+
+data:
+  data_root: "../BTCV_dataset1"
+  promt_type: "single_point"
+  split_ratio: 0.2
+  img_size: [512, 512]
+  input_size: [1024, 1024]
+  use_embedded: False
+  data_name: pre_processed_dataset1
+  info_name: pre_processed_dataset1
+  load_from_disk: False
+
+     

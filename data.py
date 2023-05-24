@@ -94,7 +94,7 @@ def load_data_test(cfg):
 
     return test_dataset
 
-def load_train_data_from_dir(data_train_path, data_val_path, info_train_path, info_val_path, cfg, use_embedded=False):
+def load_train_data_from_dir(data_train_path, data_val_path, info_train_path, info_val_path, cfg=None, use_embedded=False):
     #根据路径提取并处理数据, 划分训练/验证集. 这部分数据都是有label的
 
     print("loading img & mask from {}".format(data_train_path))
@@ -136,7 +136,7 @@ def load_train_data_from_dir(data_train_path, data_val_path, info_train_path, in
 
     return mydataset_train, mydataset_val
 
-def load_test_data_from_dir(data_test_path, info_test_path, cfg, use_embedded=False) -> Mydataset:
+def load_test_data_from_dir(data_test_path, info_test_path, cfg=None, use_embedded=False) -> Mydataset:
     #根据路径提取并处理数据, 生成测试集, 有label
 
     print("loading test img & mask from {}".format(data_test_path))

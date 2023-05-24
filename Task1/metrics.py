@@ -28,8 +28,8 @@ def dice_coefficient(y_true, y_pred):
         return dsc
 
 class Dice():
-    def __init__(self, data_path = '../BTCV/pre_processed_dataset1_test.npz',
-                  info_path = '../BTCV/pre_processed_dataset1_test.mat') -> None:
+    def __init__(self, data_path = '../BTCV_dataset1/pre_processed_dataset1_test.npz',
+                  info_path = '../BTCV_dataset1/pre_processed_dataset1_test.mat') -> None:
         
         test_set = np.load(data_path)
         info = scio.loadmat(info_path)

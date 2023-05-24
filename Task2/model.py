@@ -116,13 +116,11 @@ class finetune_sam():
                         promt_type = promt_type[0]
 
                     if promt_type == 'box':
-                        boxes = promt
+                        boxes = promt * self.input_size[0] / self.original_image_size[0]
                     elif promt_type == 'mask':
                         masks = promt
-                    elif promt_type == 'points':
-                        points = promt, promt_label
-                    elif promt_type == 'single_point':
-                        points = promt, promt_label
+                    elif promt_type == 'points' or promt_type == 'single_point':
+                        points = promt * self.input_size[0] / self.original_image_size[0], promt_label
                     else:
                         raise NotImplementedError
                                             
@@ -208,13 +206,11 @@ class finetune_sam():
                     promt_type = promt_type[0]
 
                 if promt_type == 'box':
-                    boxes = promt
+                    boxes = promt * self.input_size[0] / self.original_image_size[0]
                 elif promt_type == 'mask':
                     masks = promt
-                elif promt_type == 'points':
-                    points = promt, promt_label
-                elif promt_type == 'single_point':
-                    points = promt, promt_label
+                elif promt_type == 'points' or promt_type == 'single_point':
+                    points = promt * self.input_size[0] / self.original_image_size[0], promt_label
                 else:
                     raise NotImplementedError
                                         
@@ -303,11 +299,11 @@ class finetune_sam():
                     promt_type = promt_type[0]
 
                 if promt_type == 'box':
-                    boxes = promt
+                    boxes = promt * self.input_size[0] / self.original_image_size[0]
                 elif promt_type == 'mask':
                     masks = promt
                 elif promt_type == 'points' or promt_type == 'single_point':
-                    points = promt, promt_label
+                    points = promt * self.input_size[0] / self.original_image_size[0], promt_label
                 else:
                     raise NotImplementedError
                                         
@@ -335,11 +331,11 @@ class finetune_sam():
                 
                 mask_all[i] = (binary_mask.cpu())
 
-                loss = self.loss_fn(upscaled_masks.squeeze(), gt_mask.squeeze())
+                loss = self.loss_fn(binary_mask.squeeze(), gt_mask.squeeze())
 
                 loss_all.append(loss.cpu().item())
                 iou_all.append(iou_predictions.cpu())
-                # pdb.set_trace()
+            # pdb.set_trace()
 
         ###save model
         # torch.save()

@@ -1,7 +1,7 @@
 import sys
 
 import torch
-
+import yaml
 sys.path.append("..")
 from segment_anything import sam_model_registry, SamPredictor
 from data import Mydataset
@@ -64,6 +64,8 @@ def test(predictor, dataset : Mydataset):
         # multimask_output设为 False, 对每个img只输出1个mask
         assert mask.shape == (1, 512, 512)
 
+        # pdb.set_trace()
+        # print(mask.sum())
         gen_mask_array = np.append(gen_mask_array, mask, axis=0)
         #tqdm.write(mask.sum(), np.int32(gt_mask.sum()))
 
@@ -81,12 +83,16 @@ if __name__ == "__main__":
     predictor = SamPredictor(sam)
     print("model loaded_______________________________________________________")
 
-    data_test_path = "../BTCV/pre_processed_dataset1_test" ####!!!!!!!一定要把文件夹名字改了!!!!!!
-    dataset = DT.load_test_data_from_dir(info_test_path = data_test_path, data_test_path=data_test_path)
+    cfg_file = open('cfg.yaml')
+    cfg = yaml.load(cfg_file, Loader=yaml.SafeLoader)
+    cfg_file.close()
+
+    data_test_path = "../BTCV_dataset1/pre_processed_dataset1_test" ####!!!!!!!一定要把文件夹名字改了!!!!!!
+    dataset = DT.load_test_data_from_dir(info_test_path = data_test_path, data_test_path=data_test_path, cfg=cfg)
     print("dataset loaded______________________________________________________")
 
     gen_mask = test(predictor=predictor, dataset=dataset)
-
+    pdb.set_trace()
     if not os.path.exists("result"):
         os.mkdir("result")
     save_path = "result/prompt_1"
@@ -101,6 +107,9 @@ if __name__ == "__main__":
     Second, change iter to the number of CT cases
     At last, change the generated mask variable
     '''
+    
+    # gen_mask = np.zeros([2205, 512, 512])
+
     dice = metrics.Dice()
 
     dice.eval_data_processing(iter = 6, gen_mask = gen_mask)
