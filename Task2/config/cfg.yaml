@@ -28,7 +28,7 @@ model:
 
 data:
   data_root: "../BTCV_dataset1"
-  promt_type: "single_point"
+  promt_type: "box"
   split_ratio: 0.2
   img_size: [512, 512]
   input_size: [1024, 1024]
