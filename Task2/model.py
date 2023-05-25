@@ -13,6 +13,7 @@ from segment_anything.utils.transforms import ResizeLongestSide
 from utils.pytorch_loss.focal_loss import FocalLossV2
 from utils.pytorch_loss.soft_dice_loss import SoftDiceLossV2
 from utils.loss import multi_loss
+from utils.metrics import dice_coefficient
 
 class Mysam(Sam):
     def __init__(self) -> None:
@@ -92,7 +93,9 @@ class finetune_sam():
                 writer.add_scalar('iou/val', iou_val, epoch)
 
             ###save model
-            torch.save(self.sam_model.mask_decoder.state_dict(), self.log_dir + '/' + '{}.pth'.format(epoch))
+            if epoch > 0:
+                torch.save(self.sam_model.mask_decoder.state_dict(), self.log_dir + '/' + '{}.pth'.format(epoch))
+
             ###eval end###
             
             pbar = tqdm(dataloader, ncols=90, desc="iter", position=0)
@@ -159,11 +162,6 @@ class finetune_sam():
                 upscaled_masks = self.sam_model.postprocess_masks(low_res_masks, self.input_size, self.original_image_size).to(self.device)
                 binary_mask = normalize(threshold(upscaled_masks, 0.0, 0)).to(self.device)
 
-                # if promt_type == 'box':
-                #     for i in range(upscaled_masks.shape[0]):
-                #         coord_mask = torch.ones_like(upscaled_masks, dtype=torch.int8)
-                #         coord_mask = 
-
                 ###计算loss, update
                 # pdb.set_trace()
                 if self.loss == 'MSE':
@@ -174,13 +172,21 @@ class finetune_sam():
                 loss.backward()
                 self.optimizer.step()
 
+                #iou 
+                iou = (binary_mask * gt_mask).sum() / gt_mask.sum()
+
+                #dice_coef
+                dice_coef = (2 * torch.sum((binary_mask * gt_mask), dim=[-1, -2]) / (torch.sum(binary_mask, dim=[-2, -1]) + torch.sum(gt_mask, dim=[-2, -1]))).mean() 
                 
+                # pdb.set_trace()
+
                 ###log
                 pbar.set_postfix(loss = loss.item())
                 n_iter += 1
                 if self.use_tensorboard:
                     writer.add_scalar('loss/train', loss.cpu(), n_iter)
-                    writer.add_scalar('iou/train', iou_predictions.mean().cpu(), n_iter) #因为只设置了一个mask, 所以直接取0
+                    writer.add_scalar('iou/train', iou.cpu(), n_iter) #因为只设置了一个mask, 所以直接取0
+                    writer.add_scalar('dice/train', dice_coef.cpu(), n_iter) #因为只设置了一个mask, 所以直接取0
 
 
     def val(self, dataset, metrics=None):
@@ -251,7 +257,7 @@ class finetune_sam():
 
                 #mask
                 upscaled_masks = self.sam_model.postprocess_masks(low_res_masks, self.input_size, self.original_image_size).to(self.device)
-                binary_mask = normalize(threshold(upscaled_masks, 0.0, 0)).to(self.device).squeeze() #低于0的扔掉, 高于0的除最大值normalize到1
+                binary_mask = normalize(threshold(upscaled_masks, 0.0, 0)).to(self.device).squeeze() #低于0的扔掉, 高于0normalize到1
 
                 #loss                
                 if self.loss == 'MSE':
@@ -259,15 +265,18 @@ class finetune_sam():
                 else:
                     loss = self.loss_fn(upscaled_masks, gt_mask)
                     
+                ###iou
+                iou = (binary_mask * gt_mask).sum() / gt_mask.sum()
+                
                 ###汇总
                 loss_all.append(loss.cpu().item())
-                iou_all.append(iou_predictions.cpu())
+                iou_all.append(iou.cpu().item())
                 mask_all[i] = (binary_mask.cpu())
 
 
         loss_all = np.array(loss_all).mean() 
         # pdb.set_trace()
-        iou_all = torch.cat(iou_all).mean().item()
+        iou_all = np.array(iou_all).mean()
         mDice = metrics.eval_data_processing(6, mask_all)
         print("val mDice:", np.array(mDice).mean())
 

@@ -6,7 +6,8 @@ class multi_loss():
         assert len(loss_list) == len(weight_list)
         self.loss_list = loss_list
         self.weight_list = weight_list
-      
+        weight_sum = sum(weight_list)
+        self.weight_list = [w / weight_sum for w in self.weight_list]
 
     def __call__(self, logits, labels):
 

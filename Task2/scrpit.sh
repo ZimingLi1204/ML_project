@@ -3,9 +3,9 @@ python main.py --group_name finetune_single_point --save_name bc32_weighit_decay
 --use_embedded \
 --gpu_id 0
 
-python main.py --group_name finetune_box --save_name bc32_weighit_decay0_adam_samloss \
---batch_size 32  --weight_decay 0 --optimizer Adam --promt_type box \
---use_embedded --loss sam_loss \
+python main.py --group_name finetune_box --save_name bc32_weighit_decay1.e-3_adamW_samloss_5:1 \
+--batch_size 32  --weight_decay 1.e-3 --optimizer AdamW --promt_type box \
+--use_embedded --weight_list 5 1 --loss sam_loss \
 --gpu_id 0
 
 python main.py --group_name finetune_points --save_name bc32_weighit_decay1e-3_adam_samloss \
