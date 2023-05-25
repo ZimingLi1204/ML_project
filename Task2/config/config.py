@@ -96,6 +96,10 @@ def process_cfg(cfg, args=None, mode = ''):
     if args.save_name is not None:
         cfg['train']['save_name'] = args.save_name
 
+    ##create log path to save log
+    if not os.path.exists(cfg['train']['log_dir']):
+        os.mkdir(cfg['train']['log_dir'])
+
     cfg['train']['log_dir'] = os.path.join(cfg['train']['log_dir'], cfg["train"]['group'])
     if not os.path.exists(cfg['train']['log_dir']):
         os.mkdir(cfg['train']['log_dir'])
