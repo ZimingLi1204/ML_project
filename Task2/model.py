@@ -43,6 +43,7 @@ class finetune_sam():
             self.optimizer = torch.optim.AdamW(self.sam_model.mask_decoder.parameters(), lr=self.lr, weight_decay=cfg['train']['weight_decay']) 
         else:
             raise NotImplementedError
+        
         if self.loss == 'MSE':    
             self.loss_fn = torch.nn.MSELoss()
         else:
@@ -55,12 +56,18 @@ class finetune_sam():
         self.input_size = (self.cfg['data']['input_size'][0], self.cfg['data']['input_size'][1])
         self.original_image_size = (self.cfg['data']['img_size'][0], self.cfg['data']['img_size'][1])
 
+        #load finetuned decoder (if need)
+        self.load_model(cfg)
+
         print("finish initialize model class")
+
+    def load_model(self, cfg):
+        if cfg["model"]["load_decoder"]:
+            self.sam_model.mask_decoder.load_state_dict(torch.load(cfg["model"]["decoder_path"]))
 
     def train(self, dataloader, val_dataset, metrics=None):
 
         ##tensorboard summary writer
-        
         if self.use_tensorboard:
             writer = SummaryWriter(log_dir=self.log_dir)
 
@@ -79,7 +86,6 @@ class finetune_sam():
 
             ###save model
             torch.save(self.sam_model.mask_decoder.state_dict(), self.log_dir + '/' + '{}.pth'.format(epoch))
-
             ###eval end###
             
             pbar = tqdm(dataloader, ncols=90, desc="iter", position=0)
@@ -88,10 +94,11 @@ class finetune_sam():
                 img = img.to(self.device)
                 gt_mask = gt_mask.to(self.device).unsqueeze(1).float()
                 promt = promt.to(self.device)
-                if promt_label != -1:
+                # pdb.set_trace()
+                if promt_label[0] != -1:
                     promt_label = promt_label.to(self.device)
 
-                # pdb.set_trace()
+                
                 with torch.no_grad():
                     
                     if self.use_embedded:
@@ -99,22 +106,20 @@ class finetune_sam():
                     else:
                         ####TODO####
                         #把最长边resize成1024, 短边padding
-                        img = img.unsqueeze(1)
-                        # pdb.set_trace()
+                        img = img.unsqueeze(1) #batch * 1 * input_size * input_size
                         img = self.transform.apply_image_torch(img.float())
-                        
-                        ###问题: 输入三通道
-                        img = img.repeat(1, 3, 1, 1)
+
+                        img = img.repeat(1, 3, 1, 1) #输入三通道
                         input_img = self.sam_model.preprocess(img)
-                        # pdb.set_trace()
                         image_embedding = self.sam_model.image_encoder(input_img)
 
                     ###构建promt
                     points, boxes, masks = None, None, None
                     
-                    if isinstance(promt_type, list):
-                        promt_type = promt_type[0]
 
+                    if isinstance(promt_type, tuple):
+                        promt_type = promt_type[0]
+                    
                     if promt_type == 'box':
                         boxes = promt * self.input_size[0] / self.original_image_size[0]
                     elif promt_type == 'mask':
@@ -161,13 +166,15 @@ class finetune_sam():
                     writer.add_scalar('loss/train', loss.cpu(), n_iter)
                     writer.add_scalar('iou/train', iou_predictions.mean().cpu(), n_iter) #因为只设置了一个mask, 所以直接取0
 
-        pass
 
     def val(self, dataset, metrics=None):
+
+        self.sam_model.eval()
+
         ###调用task1中的val函数
         loss_all = []
         iou_all = []
-        mask_all = []
+        mask_all = np.zeros([len(dataset), self.original_image_size[0], self.original_image_size[1]], dtype=np.int8)
 
         pbar = tqdm(range(len(dataset)), ncols=90, desc="eval", position=0)
         for i in pbar:
@@ -178,27 +185,22 @@ class finetune_sam():
             img = torch.from_numpy(img).to(self.device).unsqueeze(0).float()
             gt_mask = torch.from_numpy(gt_mask).to(self.device).unsqueeze(0).float()
             promt = torch.from_numpy(promt).to(self.device).unsqueeze(0)
+            # pdb.set_trace()
             if promt_label != -1:
                 promt_label = torch.from_numpy(promt_label).to(self.device).unsqueeze(0)
 
+            ###use sam model generate mask
             with torch.no_grad():
                 
                 if self.use_embedded:
                     image_embedding = img
                 else:
-                    ####TODO####
-                    #把最长边resize成1024, 短边padding
                     img = img.unsqueeze(1)
-                    # pdb.set_trace()
-                    img = self.transform.apply_image_torch(img.float())
-                    
-                    ###问题: 输入三通道
-                    img = img.repeat(1, 3, 1, 1)
-                    input_img = self.sam_model.preprocess(img)
-                    # pdb.set_trace()
+                    input_img = self.transform.apply_image_torch(img)#把最长边resize成1024, 短边padding
+                    input_img = input_img.repeat(1, 3, 1, 1) #输入三通道
+                    input_img = self.sam_model.preprocess(input_img)
                     image_embedding = self.sam_model.image_encoder(input_img)
-
-            
+                
                 ###构建promt
                 points, boxes, masks = None, None, None
                 
@@ -212,9 +214,7 @@ class finetune_sam():
                 elif promt_type == 'points' or promt_type == 'single_point':
                     points = promt * self.input_size[0] / self.original_image_size[0], promt_label
                 else:
-                    raise NotImplementedError
-                                        
-                                        
+                    raise NotImplementedError                    
                 
                 #根据promt生成promt embedding
                 sparse_embeddings, dense_embeddings = self.sam_model.prompt_encoder(
@@ -223,7 +223,6 @@ class finetune_sam():
                     masks=masks,
                 )
             
-                # pdb.set_trace()
                 low_res_masks, iou_predictions = self.sam_model.mask_decoder(
                     image_embeddings=image_embedding,
                     image_pe=self.sam_model.prompt_encoder.get_dense_pe(),
@@ -231,34 +230,38 @@ class finetune_sam():
                     dense_prompt_embeddings=dense_embeddings,
                     multimask_output=False,
                 )
+
                 #mask
                 upscaled_masks = self.sam_model.postprocess_masks(low_res_masks, self.input_size, self.original_image_size).to(self.device)
-                binary_mask = normalize(threshold(upscaled_masks, 0.0, 0)).to(self.device).squeeze()
-                
-                mask_all.append(binary_mask)
+                binary_mask = normalize(threshold(upscaled_masks, 0.0, 0)).to(self.device).squeeze() #低于0的扔掉, 高于0的除最大值normalize到1
 
-                loss = self.loss_fn(binary_mask, gt_mask.squeeze())
+                #loss                
+                loss = self.loss_fn(binary_mask.squeeze(), gt_mask.squeeze())
 
+                ###汇总
                 loss_all.append(loss.cpu().item())
                 iou_all.append(iou_predictions.cpu())
+                mask_all[i] = (binary_mask.cpu())
 
-        ###save model
-        # torch.save()
-        # pdb.set_trace()
-        mask_all = np.array(torch.stack(mask_all, dim=0).cpu())
+
         loss_all = np.array(loss_all).mean() 
-        iou_all = torch.concatenate(iou_all).mean().item()
-
+        # pdb.set_trace()
+        iou_all = torch.cat(iou_all).mean().item()
         mDice = metrics.eval_data_processing(6, mask_all)
         print("val mDice:", mDice)
+
+        self.sam_model.train()
 
         return np.array(mDice).mean(), loss_all, iou_all
 
     def test(self, dataset, metrics=None):
+
+        self.sam_model.eval()
+
         ###调用task1的test 函数
         loss_all = []
         iou_all = []
-        mask_all = np.zeros([len(dataset), self.original_image_size[0], self.original_image_size[1]])
+        mask_all = np.zeros([len(dataset), self.original_image_size[0], self.original_image_size[1]], dtype=np.int8)
 
         pbar = tqdm(range(len(dataset)), ncols=90, desc="eval", position=0)
         for i in pbar:
@@ -272,26 +275,18 @@ class finetune_sam():
             if promt_label != -1:
                 promt_label = torch.from_numpy(promt_label).to(self.device).unsqueeze(0)
             
-            # pdb.set_trace()
+            ###use sam model generate mask
             with torch.no_grad():
                 
                 if self.use_embedded:
                     image_embedding = img
                 else:
-                    ####TODO####
-                    #把最长边resize成1024, 短边padding
                     img = img.unsqueeze(1)
-                    # pdb.set_trace()
-                    input_img = self.transform.apply_image_torch(img)
-                    
-                    ###问题: 输入三通道
-                    input_img = input_img.repeat(1, 3, 1, 1)
+                    input_img = self.transform.apply_image_torch(img)#把最长边resize成1024, 短边padding
+                    input_img = input_img.repeat(1, 3, 1, 1) #输入三通道
                     input_img = self.sam_model.preprocess(input_img)
-                    # pdb.set_trace()
                     image_embedding = self.sam_model.image_encoder(input_img)
                 
-                # pdb.set_trace()
-            
                 ###构建promt
                 points, boxes, masks = None, None, None
                 
@@ -305,18 +300,15 @@ class finetune_sam():
                 elif promt_type == 'points' or promt_type == 'single_point':
                     points = promt * self.input_size[0] / self.original_image_size[0], promt_label
                 else:
-                    raise NotImplementedError
-                                        
+                    raise NotImplementedError                    
                 
                 #根据promt生成promt embedding
-                # pdb.set_trace()
                 sparse_embeddings, dense_embeddings = self.sam_model.prompt_encoder(
                     points=points,
                     boxes=boxes,
                     masks=masks,
                 )
             
-                # pdb.set_trace()
                 low_res_masks, iou_predictions = self.sam_model.mask_decoder(
                     image_embeddings=image_embedding,
                     image_pe=self.sam_model.prompt_encoder.get_dense_pe(),
@@ -324,27 +316,22 @@ class finetune_sam():
                     dense_prompt_embeddings=dense_embeddings,
                     multimask_output=False,
                 )
+
                 #mask
                 upscaled_masks = self.sam_model.postprocess_masks(low_res_masks, self.input_size, self.original_image_size).to(self.device)
-               
-                binary_mask = normalize(threshold(upscaled_masks, 0.0, 0)).to(self.device).squeeze()
-                
-                mask_all[i] = (binary_mask.cpu())
+                binary_mask = normalize(threshold(upscaled_masks, 0.0, 0)).to(self.device).squeeze() #低于0的扔掉, 高于0的除最大值normalize到1
 
+                #loss                
                 loss = self.loss_fn(binary_mask.squeeze(), gt_mask.squeeze())
 
+                ###汇总
                 loss_all.append(loss.cpu().item())
                 iou_all.append(iou_predictions.cpu())
-            # pdb.set_trace()
+                mask_all[i] = (binary_mask.cpu())
 
-        ###save model
-        # torch.save()
-        
         
         loss_all = np.array(loss_all).mean() 
-        iou_all = torch.concatenate(iou_all).mean().item()
-
-        # pdb.set_trace()
+        iou_all = torch.cat(iou_all).mean().item()
         mDice = metrics.eval_data_processing(6, mask_all)
         print("test mDice:", mDice)
         print("test loss:", loss_all)

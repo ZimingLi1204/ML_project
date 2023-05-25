@@ -24,6 +24,8 @@ test:
 model:
   model_root: ../pretrain_model
   model_type: vit_h
+  load_decoder: False
+  decoder_path: 
 
 
 data:
