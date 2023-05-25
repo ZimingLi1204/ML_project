@@ -49,6 +49,7 @@ def parse_args():
     parser.add_argument('--ckpt_path', default=None, type=str, help='load model dir')
     parser.add_argument('--save_name', type=str, default=None)
     parser.add_argument('--group_name', type=str, default=None)
+    parser.add_argument('--log_dir', type=str, default=None)
 
     # #others
     # parser.add_argument('--seed', type=int, default=None)
@@ -106,6 +107,8 @@ def process_cfg(cfg, args=None, mode = ''):
         cfg["test"]["test"] = True
     
     ###save name and dir
+    if args.group_name is not None:
+        cfg['train']['log_dir'] = args.log_dir
     if args.group_name is not None:
         cfg['train']['group'] = args.group_name
     if args.save_name is not None:
