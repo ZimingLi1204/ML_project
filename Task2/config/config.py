@@ -23,11 +23,14 @@ def parse_args():
     parser.add_argument('--learning_rate', type=float, default=None)
     parser.add_argument('--weight_decay', default=None, type=float)
     parser.add_argument('--optimizer', default=None, type=str)
+    parser.add_argument('--linear_warmup', default=False, action='store_true')
+    parser.add_argument('--warmup_iter', type=float, default=None)
+    parser.add_argument('--start_factor', type=float, default=None)
     # parser.add_argument('--schedular', default=None, type=str)
 
     # #loss 
     # parser.add_argument('--cls_loss_weight', type=float, default=None, help='loss weight of classifier')
-    # parser.add_argument('--domain_loss_weight', type=float, default=None, help='loss weight of DAN (if use)')
+    
     parser.add_argument('--loss', type=str, default=None)
     parser.add_argument('--weight_list', nargs='+', default=None, type=int)
     
@@ -81,7 +84,13 @@ def process_cfg(cfg, args=None, mode = ''):
         cfg["train"]["loss"] = args.loss
     if args.weight_list is not None:
         cfg["train"]["weight_list"] = args.weight_list
-
+    if args.linear_warmup:
+        cfg["train"]["linear_warmup"] = True
+    if args.start_factor:
+        cfg["train"]["start_factor"] = args.start_factor
+    if args.warmup_iter:
+        cfg["train"]["warmup_iter"] = args.warmup_iter
+        
     ####data
     if args.use_embedded:
         cfg["data"]["use_embedded"] = True

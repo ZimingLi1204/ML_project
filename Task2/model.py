@@ -14,6 +14,7 @@ from utils.pytorch_loss.focal_loss import FocalLossV2
 from utils.pytorch_loss.soft_dice_loss import SoftDiceLossV2
 from utils.loss import multi_loss
 from utils.metrics import dice_coefficient
+from torch.optim.lr_scheduler import LinearLR
 
 class Mysam(Sam):
     def __init__(self) -> None:
@@ -39,7 +40,7 @@ class finetune_sam():
         self.optim = cfg['train']['optimizer']
         self.loss = cfg['train']['loss']
         self.lr = cfg['train']['learning_rate']
-
+        self.linear_warmup = cfg["train"]["linear_warmup"]
 
         if self.optim == 'Adam':
             self.optimizer = torch.optim.Adam(self.sam_model.mask_decoder.parameters(), lr=self.lr, weight_decay=cfg['train']['weight_decay']) 
@@ -48,6 +49,9 @@ class finetune_sam():
         else:
             raise NotImplementedError
         
+        if self.linear_warmup:
+            self.scheduler = LinearLR(self.optimizer, start_factor=cfg["train"]["start_factor"], total_iters=cfg["train"]["warmup_iter"])
+
         if self.loss == 'MSE':    
             self.loss_fn = torch.nn.MSELoss()
         elif self.loss == 'sam_loss':
@@ -172,6 +176,9 @@ class finetune_sam():
                 loss.backward()
                 self.optimizer.step()
 
+                if self.linear_warmup and n_iter < self.cfg["train"]["warmup_iter"]:
+                    self.scheduler.step()
+
                 #iou 
                 iou = (binary_mask * gt_mask).sum() / gt_mask.sum()
 
@@ -185,6 +192,7 @@ class finetune_sam():
                 n_iter += 1
                 if self.use_tensorboard:
                     writer.add_scalar('loss/train', loss.cpu(), n_iter)
+                    writer.add_scalar('train/lr', self.optimizer.param_groups[0]['lr'] , n_iter)
                     writer.add_scalar('iou/train', iou.cpu(), n_iter) #因为只设置了一个mask, 所以直接取0
                     writer.add_scalar('dice/train', dice_coef.cpu(), n_iter) #因为只设置了一个mask, 所以直接取0
 
