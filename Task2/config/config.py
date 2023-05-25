@@ -28,8 +28,8 @@ def parse_args():
     # #loss 
     # parser.add_argument('--cls_loss_weight', type=float, default=None, help='loss weight of classifier')
     # parser.add_argument('--domain_loss_weight', type=float, default=None, help='loss weight of DAN (if use)')
-    # parser.add_argument('--loss', type=str, default=None)
-    # parser.add_argument('--beta', type=float, default=None, help= "beta of smoothl1 loss")
+    parser.add_argument('--loss', type=str, default=None)
+    parser.add_argument('--weight_list', nargs='+', default=None)
     
     # #eval
     # parser.add_argument('--eval_freq', type=int, default=None)
@@ -75,6 +75,12 @@ def process_cfg(cfg, args=None, mode = ''):
         cfg['train']['weight_decay'] = args.weight_decay
     if args.optimizer is not None:
         cfg['train']['optimizer'] = args.optimizer
+
+    #####loss
+    if args.loss is not None:
+        cfg["train"]["loss"] = args.loss
+    if args.weight_list is not None:
+        cfg["train"]["weight_list"] = args.weight_list
 
     ####data
     if args.use_embedded:

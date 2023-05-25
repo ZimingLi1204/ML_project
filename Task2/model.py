@@ -10,6 +10,9 @@ from segment_anything.modeling import Sam
 from torch.nn.functional import threshold, normalize
 from torch.utils.tensorboard import SummaryWriter
 from segment_anything.utils.transforms import ResizeLongestSide
+from utils.pytorch_loss.focal_loss import FocalLossV2
+from utils.pytorch_loss.soft_dice_loss import SoftDiceLossV2
+from utils.loss import multi_loss
 
 class Mysam(Sam):
     def __init__(self) -> None:
@@ -46,6 +49,10 @@ class finetune_sam():
         
         if self.loss == 'MSE':    
             self.loss_fn = torch.nn.MSELoss()
+        elif self.loss == 'sam_loss':
+            self.focal_loss = FocalLossV2()
+            self.dice_loss = SoftDiceLossV2()
+            self.loss_fn = multi_loss(loss_list = [self.focal_loss, self.dice_loss], weight_list = cfg["train"]["weight_list"])
         else:
             raise NotImplementedError
             
@@ -91,14 +98,15 @@ class finetune_sam():
             pbar = tqdm(dataloader, ncols=90, desc="iter", position=0)
             for img, gt_mask, promt, promt_label, promt_type in pbar:
 
+                #chanve device
                 img = img.to(self.device)
                 gt_mask = gt_mask.to(self.device).unsqueeze(1).float()
                 promt = promt.to(self.device)
-                # pdb.set_trace()
-                if promt_label[0] != -1:
+                if isinstance(promt_label[0], torch.Tensor):
                     promt_label = promt_label.to(self.device)
-
-                
+                elif promt_label[0] != -1:
+                    promt_label = promt_label.to(self.device)
+                    
                 with torch.no_grad():
                     
                     if self.use_embedded:
@@ -151,9 +159,17 @@ class finetune_sam():
                 upscaled_masks = self.sam_model.postprocess_masks(low_res_masks, self.input_size, self.original_image_size).to(self.device)
                 binary_mask = normalize(threshold(upscaled_masks, 0.0, 0)).to(self.device)
 
+                # if promt_type == 'box':
+                #     for i in range(upscaled_masks.shape[0]):
+                #         coord_mask = torch.ones_like(upscaled_masks, dtype=torch.int8)
+                #         coord_mask = 
+
                 ###计算loss, update
                 # pdb.set_trace()
-                loss = self.loss_fn(binary_mask, gt_mask)
+                if self.loss == 'MSE':
+                    loss = self.loss_fn(binary_mask, gt_mask)
+                else:
+                    loss = self.loss_fn(upscaled_masks, gt_mask)
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
@@ -186,7 +202,9 @@ class finetune_sam():
             gt_mask = torch.from_numpy(gt_mask).to(self.device).unsqueeze(0).float()
             promt = torch.from_numpy(promt).to(self.device).unsqueeze(0)
             # pdb.set_trace()
-            if promt_label != -1:
+            if isinstance(promt_label, torch.Tensor):
+                promt_label = torch.from_numpy(promt_label).to(self.device).unsqueeze(0)
+            elif promt_label != -1:
                 promt_label = torch.from_numpy(promt_label).to(self.device).unsqueeze(0)
 
             ###use sam model generate mask
@@ -236,8 +254,11 @@ class finetune_sam():
                 binary_mask = normalize(threshold(upscaled_masks, 0.0, 0)).to(self.device).squeeze() #低于0的扔掉, 高于0的除最大值normalize到1
 
                 #loss                
-                loss = self.loss_fn(binary_mask.squeeze(), gt_mask.squeeze())
-
+                if self.loss == 'MSE':
+                    loss = self.loss_fn(binary_mask, gt_mask)
+                else:
+                    loss = self.loss_fn(upscaled_masks, gt_mask)
+                    
                 ###汇总
                 loss_all.append(loss.cpu().item())
                 iou_all.append(iou_predictions.cpu())
@@ -248,7 +269,7 @@ class finetune_sam():
         # pdb.set_trace()
         iou_all = torch.cat(iou_all).mean().item()
         mDice = metrics.eval_data_processing(6, mask_all)
-        print("val mDice:", mDice)
+        print("val mDice:", np.array(mDice).mean())
 
         self.sam_model.train()
 

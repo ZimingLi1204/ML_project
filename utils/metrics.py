@@ -13,7 +13,7 @@ def dice_coefficient(y_true, y_pred):
     np.seterr(divide='ignore',invalid='ignore')
     y_true_f = np.asarray(y_true).astype(np.int32)
     y_pred_f = np.asarray(y_pred).astype(np.int32)
-    print(y_pred_f.shape, y_true_f.shape)
+    # print(y_pred_f.shape, y_true_f.shape)
     # Compute the intersection
     intersection = np.logical_and(y_true_f, y_pred_f)
     #y_pred_f = np.logical_and(y_pred_f, y_pred_f)
@@ -29,10 +29,13 @@ def dice_coefficient(y_true, y_pred):
 
 class Dice():
     def __init__(self, data_path = '../BTCV_dataset1/pre_processed_dataset1_test.npz',
-                  info_path = '../BTCV_dataset1/pre_processed_dataset1_test.mat', mask_gt = None, info_gt = None) -> None:
+                  info_path = '../BTCV_dataset1/pre_processed_dataset1_test.mat', mask_gt = None, info_gt = None, verbose=False) -> None:
         '''
         如果给了数据(mask)和info, 那么就不再需要读取
         '''
+
+        self.verbose = verbose
+
         if (mask_gt is None):
             test_set = np.load(data_path)
             self.mask_groundtruth = test_set["mask"]
@@ -51,7 +54,7 @@ class Dice():
         if fla != 0:
             print("test data is not correct")
         else :
-            print("test data is correct")
+            print("test data is correct")        
 
         self.cate = info["category"]
         self.cate = self.cate[0, :]
@@ -98,20 +101,24 @@ class Dice():
             if (gt_mask_cate.shape[0] != 0):
                 organ_num += 1
                 dice = dice_coefficient(gt_mask_cate, gen_mask_cate)
-                print("Organ:", i, "Dice:", dice)
+                if self.verbose:
+                    print("Organ:", i, "Dice:", dice)
                 sumdice += dice
 
         mdice = sumdice / organ_num
-        print("mDice", mdice)
+        if self.verbose:
+            print("mDice", mdice)
         return mdice
 
     def eval_data_processing(self, iter, gen_mask):
         self.find_pointer()
         #寻找每一个CT对应的编号
-        print("list_p:", self.listp)
+        if self.verbose:
+            print("list_p:", self.listp)
         m_Dice = [0] * iter
         for i in range (iter):
-            print("CT", i + 1, "_______________________________")
+            if self.verbose:
+                print("CT", i + 1, "_______________________________")
             m_Dice[i] = self.eval_mdice(i, gen_mask)
         # print("Total mDice:", m_Dice)
         return m_Dice

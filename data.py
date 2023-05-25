@@ -227,7 +227,7 @@ def save_embedded_data():
     # #test_img
 
     pbar = tqdm(range(test_img.shape[0]//bc), ncols=90, desc='Test')
-    test_data_embedded = np.zeros((test_img.shape[0], 256, 64, 64))
+    test_data_embedded = np.zeros((test_img.shape[0], 256, 64, 64), dtype=np.float32)
     for i in pbar:
         test_data_embedded[bc*i: bc*(i+1)] = embedding_single_img(test_img[bc*i: bc*(i+1)], transform=transform, sam_model=sam_model, device=device)
     if bc * (test_img.shape[0]//bc) < test_img.shape[0]:
