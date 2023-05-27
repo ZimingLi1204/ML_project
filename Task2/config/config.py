@@ -4,6 +4,7 @@ import numpy as np
 import datetime
 import torch
 import argparse
+import pdb
 
 def parse_args():
 
@@ -107,7 +108,7 @@ def process_cfg(cfg, args=None, mode = ''):
         cfg["test"]["test"] = True
     
     ###save name and dir
-    if args.group_name is not None:
+    if args.log_dir is not None:
         cfg['train']['log_dir'] = args.log_dir
     if args.group_name is not None:
         cfg['train']['group'] = args.group_name
@@ -115,6 +116,7 @@ def process_cfg(cfg, args=None, mode = ''):
         cfg['train']['save_name'] = args.save_name
 
     ##create log path to save log
+    # pdb.set_trace()
     if not os.path.exists(cfg['train']['log_dir']):
         os.mkdir(cfg['train']['log_dir'])
 

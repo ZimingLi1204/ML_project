@@ -14,7 +14,7 @@ python main.py --group_name finetune_box --save_name bc32_weighit_decay1.e-3_ada
 --gpu_id 0
 
 python main.py --group_name finetune_points --save_name bc32_weighit_decay1e-3_adam_samloss \
---batch_size 32  --weight_decay 1.e-3 --optimizer Adam --promt_type points \
+--batch_size 32  --weight_decay 1.e-3 --optimizer AdamW --promt_type points \
 --use_embedded --loss sam_loss \
 --gpu_id 0
 
