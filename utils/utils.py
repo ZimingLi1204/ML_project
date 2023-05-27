@@ -3,7 +3,7 @@ import numpy as np
 import os
 import random
 import cv2
-
+import pdb
 
 def set_seed(seed, torch_deterministic=False):
     if seed == -1 and torch_deterministic:
@@ -42,58 +42,83 @@ def get_promt(
 
     if promt_type == "single_point":  # 单点 1个XY坐标 和 1个01 label
         if center_point:
-            coord_set = np.empty((0, 2), dtype=np.uint8)
-            avg = np.zeros((1, 2), dtype=np.uint16)
-            for i in range(point_size):
-                test_coord = np.random.randint(low=1, high=512, size=(1, 2))
-                while mask[test_coord[0, 0], test_coord[0, 1]] == 0:
-                    test_coord = np.random.randint(low=1, high=512, size=(1, 2))
-                coord_set = np.concatenate((coord_set, test_coord))
-                avg = avg + test_coord
+            # coord_set = np.empty((0, 2), dtype=np.uint8)
+            coord_set = np.zeros((point_size, 2), dtype=np.uint16)
+            # avg = np.zeros((1, 2), dtype=np.uint16)
+            coor_1d = np.random.choice(mask.shape[0] * mask.shape[1], size=point_size, p=mask.reshape(-1)/mask.sum(), replace=False)
+            coord_set[:, 0] = coor_1d // mask.shape[0]
+            coord_set[:, 1] = coor_1d % mask.shape[0]
+            # for i in range(point_size):
+            #     test_coord = np.random.randint(low=1, high=512, size=(1, 2))
+            #     while mask[test_coord[0, 0], test_coord[0, 1]] == 0:
+            #         test_coord = np.random.randint(low=1, high=512, size=(1, 2))
+            #     coord_set = np.concatenate((coord_set, test_coord))
+            #     avg = avg + test_coord
+
             # 随机选point_size个点
-            avg = avg // point_size
-            mindis = 4000000
-            argmin = -1
-            for i in range(point_size):
-                dis = (coord_set[i, 0] - avg[0, 0]) ** 2 + (
-                    coord_set[i, 1] - avg[0, 1]
-                ) ** 2
-                if dis < mindis:
-                    mindis = dis
-                    argmin = i
+            avg = np.mean(coord_set.astype(np.float32)).astype(np.uint16)
+            argmin = np.argmin(np.sum((coord_set - avg)**2, axis=1))
+            # avg = avg // point_size
+            # mindis = 4000000
+            # argmin = -1
+            # for i in range(point_size):
+            #     dis = (coord_set[i, 0] - avg[0, 0]) ** 2 + (
+            #         coord_set[i, 1] - avg[0, 1]
+            #     ) ** 2
+            #     if dis < mindis:
+            #         mindis = dis
+            #         argmin = i
             # 选中心点
             coord = np.array([[coord_set[argmin, 0], coord_set[argmin, 1]]])
             label = np.array([1])
             promt = coord, label
         else:
-            coord = np.random.randint(low=1, high=512, size=(1, 2))
-            while mask[coord[0, 0], coord[0, 1]] == 0:  # 随机取一个在mask前景中的XY坐标
-                coord = np.random.randint(low=1, high=512, size=(1, 2))
+            # 随机取一个在mask前景中的XY坐标
+            # coord = np.random.randint(low=1, high=512, size=(1, 2))
+            # while mask[coord[0, 0], coord[0, 1]] == 0:  
+            #     coord = np.random.randint(low=1, high=512, size=(1, 2))
+            coord = np.zeros((1, 2), dtype=np.uint16)
+            coor_1d = np.random.choice(mask.shape[0] * mask.shape[1], size=1, p=mask.reshape(-1)/mask.sum(), replace=False)
+            # print(coor_1d)
+            coord[:, 0] = coor_1d // mask.shape[0]
+            coord[:, 1] = coor_1d % mask.shape[0]
             label = np.array([1])
+            print(coord)
             promt = coord, label
+
     elif promt_type == "points":  # 多点   N个XY坐标 和 N个01 label
         if center_point:
-            coord = np.empty((0, 2), dtype=np.uint8)
+            coord = np.empty((0, 2), dtype=np.uint16)
             for m in range(point_num):
-                coord_set = np.empty((0, 2), dtype=np.uint8)
-                avg = np.zeros((1, 2), dtype=np.uint16)
-                for i in range(point_size):
-                    test_coord = np.random.randint(low=1, high=512, size=(1, 2))
-                    while mask[test_coord[0, 0], test_coord[0, 1]] == 0:
-                        test_coord = np.random.randint(low=1, high=512, size=(1, 2))
-                    coord_set = np.concatenate((coord_set, test_coord))
-                    avg = avg + test_coord
+                # coord_set = np.empty((0, 2), dtype=np.uint8)
+                coord_set = np.zeros((point_size, 2), dtype=np.uint16)
+                # avg = np.zeros((1, 2), dtype=np.uint16)
+                # pdb.set_trace()
+                ###new###
+                coor_1d = np.random.choice(mask.shape[0] * mask.shape[1], size=point_size, p=mask.reshape(-1)/mask.sum(), replace=False)
+                coord_set[:, 0] = coor_1d // mask.shape[0]
+                coord_set[:, 1] = coor_1d % mask.shape[0]
+                # for i in range(point_size):
+                #     test_coord = np.random.randint(low=1, high=512, size=(1, 2))
+                #     while mask[test_coord[0, 0], test_coord[0, 1]] == 0:
+                #         test_coord = np.random.randint(low=1, high=512, size=(1, 2))
+                #     coord_set = np.concatenate((coord_set, test_coord))
+                #     avg = avg + test_coord
+                
                 # 随机选point_size个点
-                avg = avg // point_size
-                mindis = 4000000
-                argmin = -1
-                for i in range(point_size):
-                    dis = (coord_set[i, 0] - avg[0, 0]) ** 2 + (
-                        coord_set[i, 1] - avg[0, 1]
-                    ) ** 2
-                    if dis < mindis:
-                        mindis = dis
-                        argmin = i
+                avg = np.mean(coord_set.astype(np.float32)).astype(np.uint16)
+                # avg = avg // point_size
+                # mindis = 4000000
+                # argmin = -1
+                # for i in range(point_size):
+                #     dis = (coord_set[i, 0] - avg[0, 0]) ** 2 + (
+                #         coord_set[i, 1] - avg[0, 1]
+                #     ) ** 2
+                #     if dis < mindis:
+                #         mindis = dis
+                #         argmin = i
+                argmin = np.argmin(np.sum((coord_set - avg)**2, axis=1))
+
                 # 选中心点
                 coord = np.concatenate(
                     (coord, [[coord_set[argmin, 0], coord_set[argmin, 1]]])
@@ -101,16 +126,21 @@ def get_promt(
             label = np.ones((point_num,), dtype=np.uint8)
             promt = coord, label
         else:
-            coord = np.empty((0, 2), dtype=np.uint8)
-            for i in range(point_num):
-                single_coord = np.random.randint(low=1, high=512, size=(1, 2))
-                while (
-                    mask[single_coord[0, 0], single_coord[0, 1]] == 0
-                ):  # 随机取一个在mask前景中的XY坐标
-                    single_coord = np.random.randint(low=1, high=512, size=(1, 2))
-                coord = np.concatenate((coord, single_coord))
+            # coord = np.empty((0, 2), dtype=np.uint16)
+            # for i in range(point_num):
+            #     single_coord = np.random.randint(low=1, high=512, size=(1, 2))
+            #     while (
+            #         mask[single_coord[0, 0], single_coord[0, 1]] == 0
+            #     ):  # 随机取一个在mask前景中的XY坐标
+            #         single_coord = np.random.randint(low=1, high=512, size=(1, 2))
+            #     coord = np.concatenate((coord, single_coord))
+            coord = np.zeros((point_size, 2), dtype=np.uint16)
+            coor_1d = np.random.choice(mask.shape[0] * mask.shape[1], size=point_size, p=mask.reshape(-1)/mask.sum(), replace=False)
+            coord[:, 0] = coor_1d // mask.shape[0]
+            coord[:, 1] = coor_1d % mask.shape[0]
             label = np.ones((point_num,), dtype=np.uint8)
             promt = coord, label
+
     elif promt_type == "box":  # 边界框  形如XYXY
         retval, labels, stats, centroids = cv2.connectedComponentsWithStats(
             mask, connectivity=4
@@ -131,3 +161,16 @@ def get_promt(
         raise Exception
 
     return promt
+
+###used for debug
+if __name__ == '__main__':
+    mask = np.zeros((512, 512), dtype=np.uint8)
+    mask[200:220, 210:280] = 1
+
+    get_promt(
+    img=None,
+    mask=mask,
+    promt_type="points",
+    center_point=False,
+    
+)

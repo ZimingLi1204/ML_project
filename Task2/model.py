@@ -109,7 +109,8 @@ class finetune_sam():
                 img = img.to(self.device)
                 gt_mask = gt_mask.to(self.device).unsqueeze(1).float()
                 promt = promt.to(self.device)
-                if isinstance(promt_label[0], torch.Tensor):
+
+                if torch.is_tensor(promt_label):
                     promt_label = promt_label.to(self.device)
                 elif promt_label[0] != -1:
                     promt_label = promt_label.to(self.device)
@@ -215,8 +216,11 @@ class finetune_sam():
             img = torch.from_numpy(img).to(self.device).unsqueeze(0).float()
             gt_mask = torch.from_numpy(gt_mask).to(self.device).unsqueeze(0).float()
             promt = torch.from_numpy(promt).to(self.device).unsqueeze(0)
+            
             # pdb.set_trace()
-            if isinstance(promt_label, torch.Tensor):
+            if torch.is_tensor(promt_label):
+                promt_label = promt_label.to(self.device).unsqueeze(0)
+            elif type(promt_label) is np.ndarray:
                 promt_label = torch.from_numpy(promt_label).to(self.device).unsqueeze(0)
             elif promt_label != -1:
                 promt_label = torch.from_numpy(promt_label).to(self.device).unsqueeze(0)
@@ -236,7 +240,7 @@ class finetune_sam():
                 ###构建promt
                 points, boxes, masks = None, None, None
                 
-                if isinstance(promt_type, list):
+                if isinstance(promt_type, tuple):
                     promt_type = promt_type[0]
 
                 if promt_type == 'box':
@@ -310,9 +314,14 @@ class finetune_sam():
             img = torch.from_numpy(img).to(self.device).unsqueeze(0).float()
             gt_mask = torch.from_numpy(gt_mask).to(self.device).unsqueeze(0).float()
             promt = torch.from_numpy(promt).to(self.device).unsqueeze(0)
-            if promt_label != -1:
-                promt_label = torch.from_numpy(promt_label).to(self.device).unsqueeze(0)
             
+            if torch.is_tensor(promt_label):
+                promt_label = promt_label.to(self.device).unsqueeze(0)
+            elif isinstance(promt_label, np.array):
+                promt_label = torch.from_numpy(promt_label).to(self.device).unsqueeze(0)
+            elif promt_label != -1:
+                promt_label = torch.from_numpy(promt_label).to(self.device).unsqueeze(0)
+
             ###use sam model generate mask
             with torch.no_grad():
                 

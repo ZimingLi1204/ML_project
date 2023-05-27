@@ -1,6 +1,6 @@
-python main.py --group_name finetune_single_point --save_name bc32_weighit_decay1e-3_adam \
---batch_size 32  --weight_decay 1.e-3 --optimizer Adam --promt_type single_point \
---use_embedded \
+python main.py --group_name finetune_single_point --save_name bc32_weighit_decay1e-3_adam_samloss_center_point \
+--batch_size 32  --weight_decay 1.e-3 --optimizer AdamW --promt_type single_point \
+--use_embedded --loss sam_loss \
 --gpu_id 0
 
 python main.py --group_name finetune_box --save_name bc32_weighit_decay1.e-2_adamW_samloss_20:1 \
@@ -13,7 +13,7 @@ python main.py --group_name finetune_box --save_name bc32_weighit_decay1.e-3_ada
 --use_embedded --weight_list 20 1 --loss sam_loss --linear_warmup \
 --gpu_id 0
 
-python main.py --group_name finetune_points --save_name bc32_weighit_decay1e-3_adam_samloss \
+python main.py --group_name finetune_points --save_name bc32_weighit_decay1e-3_adam_samloss_center_point \
 --batch_size 32  --weight_decay 1.e-3 --optimizer AdamW --promt_type points \
 --use_embedded --loss sam_loss \
 --gpu_id 0

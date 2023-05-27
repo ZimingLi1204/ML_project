@@ -34,7 +34,7 @@ def embedding_single_img(img, transform, sam_model, device):
 
 class Mydataset(Dataset):
 
-    def __init__(self, mode: np.array, img : np.array , mask: np.array, name: list, slice_id: list, category: list, promt_type="single_point", load_from_disk=False):
+    def __init__(self, mode: np.array, img : np.array , mask: np.array, name: list, slice_id: list, category: list, promt_type="single_point", load_from_disk=False, center_point=True, point_num=8, point_size=16):
         '''
         mode: train/val/test
         data: N * 512 * 512.
@@ -51,6 +51,9 @@ class Mydataset(Dataset):
         self.category = category
         self.promt_type = promt_type
         self.load_from_disk = load_from_disk
+        self.center_point=center_point
+        self.point_num = point_num
+        self.point_size = point_size
 
     def __len__(self):
         
@@ -67,7 +70,7 @@ class Mydataset(Dataset):
         promt_type = self.promt_type
 
         mask = self.mask[index]
-        promt = get_promt(img, mask, promt_type)
+        promt = get_promt(img, mask, promt_type, point_num = self.point_num, center_point=self.center_point, point_size=self.point_size)
         if isinstance(promt, tuple):
             promt, promt_label = promt
         return img, mask, promt, promt_label, promt_type
@@ -168,8 +171,10 @@ def load_test_data_from_dir(data_test_path, info_test_path, cfg=None, use_embedd
     slice_id_test = test_info["slice_id"]
     category_test = test_info["category"]
 
-    mydataset_test = Mydataset(mode='test', img=img_test, mask=mask_test, name=name_test, slice_id=slice_id_test,
-                                category=category_test, load_from_disk=load_from_disk, promt_type=cfg["data"]["promt_type"])
+    mydataset_test = Mydataset(mode='test', img=img_test, 
+                               mask=mask_test, name=name_test, slice_id=slice_id_test,
+                                category=category_test, load_from_disk=load_from_disk, promt_type=cfg["data"]["promt_type"]
+                                )
 
 
     return mydataset_test
