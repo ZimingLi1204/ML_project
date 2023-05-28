@@ -134,8 +134,21 @@ def load_train_data_from_dir(data_train_path, data_val_path, info_train_path, in
     category_train = train_info["category"]
     category_val = val_info["category"]
    
-    mydataset_train = Mydataset(mode='train',img=img_train, mask=mask_train, name=name_train, slice_id=slice_id_train, category=category_train, load_from_disk=load_from_disk, promt_type=cfg["data"]["promt_type"])
-    mydataset_val = Mydataset(mode='train', img=img_val, mask=mask_val, name=name_val, slice_id=slice_id_val, category=category_val, load_from_disk=load_from_disk, promt_type=cfg["data"]["promt_type"])
+    mydataset_train = Mydataset(mode='train',img=img_train, 
+                                mask=mask_train, name=name_train, slice_id=slice_id_train, 
+                                category=category_train, load_from_disk=load_from_disk,     
+                                promt_type=cfg["promt"]["promt_type"],
+                                center_point=cfg["promt"]["center_point"],
+                                point_num = cfg["promt"]["point_num"],
+                                point_size = cfg["promt"]["point_size"])
+    
+    mydataset_val = Mydataset(mode='train', img=img_val,
+                            mask=mask_val, name=name_val, slice_id=slice_id_val, 
+                            category=category_val, load_from_disk=load_from_disk, 
+                            promt_type=cfg["promt"]["promt_type"],
+                            center_point=cfg["promt"]["center_point"],
+                            point_num = cfg["promt"]["point_num"],
+                            point_size = cfg["promt"]["point_size"])
 
     return mydataset_train, mydataset_val
 
@@ -173,7 +186,11 @@ def load_test_data_from_dir(data_test_path, info_test_path, cfg=None, use_embedd
 
     mydataset_test = Mydataset(mode='test', img=img_test, 
                                mask=mask_test, name=name_test, slice_id=slice_id_test,
-                                category=category_test, load_from_disk=load_from_disk, promt_type=cfg["data"]["promt_type"]
+                                category=category_test, load_from_disk=load_from_disk, 
+                                promt_type=cfg["promt"]["promt_type"],
+                                center_point=cfg["promt"]["center_point"],
+                                point_num = cfg["promt"]["point_num"],
+                                point_size = cfg["promt"]["point_size"],
                                 )
 
 

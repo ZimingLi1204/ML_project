@@ -381,6 +381,7 @@ class finetune_sam():
         iou_all = torch.cat(iou_all).mean().item()
         mDice = metrics.eval_data_processing(6, mask_all)
         print("test mDice:", mDice)
+        print("test mDice mean:", np.mean(np.array(mDice)))
         print("test loss:", loss_all)
         print("test iou:", iou_all)
         

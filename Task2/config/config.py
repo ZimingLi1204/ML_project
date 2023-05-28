@@ -15,10 +15,14 @@ def parse_args():
     # parser.add_argument('--train_length', type=int, default=None, help='how many trading days used before for features')
     # parser.add_argument('--use_dataloder', default=False, action='store_true', help='use dataloder or batch data ')
     parser.add_argument('--data_root', default=None, type=str, help='train data root')
-    parser.add_argument('--promt_type', default=None, type=str)
     parser.add_argument('--use_embedded', default=False, action='store_true')
     parser.add_argument('--load_from_disk', default=False, action='store_true')
 
+    #promt
+    parser.add_argument('--promt_type', default=None, type=str)
+    parser.add_argument('--center_point', default=False, action='store_true')
+    parser.add_argument('--point_num', default=None, type=int)
+    parser.add_argument('--point_size', default=None, type=int)
     # #learning
     parser.add_argument('--batch_size', type=int, default=None, help='batch size')
     # parser.add_argument('--batch_split', type=int, default=None, help='batch split for no dataloder situation')
@@ -32,7 +36,6 @@ def parse_args():
 
     # #loss 
     # parser.add_argument('--cls_loss_weight', type=float, default=None, help='loss weight of classifier')
-    
     parser.add_argument('--loss', type=str, default=None)
     parser.add_argument('--weight_list', nargs='+', default=None, type=int)
     
@@ -100,8 +103,16 @@ def process_cfg(cfg, args=None, mode = ''):
         cfg["data"]["use_embedded"] = True
     if args.load_from_disk:
         cfg["data"]["load_from_disk"] = True
+
+    ####promt
     if args.promt_type is not None:
-        cfg["data"]["promt_type"] = args.promt_type
+        cfg["promt"]["promt_type"] = args.promt_type
+    if args.center_point:
+        cfg["promt"]["center_point"] = True
+    if args.point_num is not None:
+        cfg["promt"]["point_num"] = args.point_num
+    if args.point_size is not None:
+        cfg["promt"]["point_size"] = args.point_size
 
     ###others
     if args.gpu_id is not None:
