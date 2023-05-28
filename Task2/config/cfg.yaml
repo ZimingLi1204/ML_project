@@ -48,7 +48,7 @@ data:
 promt:
   promt_type: "box"
   center_point: False
-  point_num: 8
+  point_num: 16
   point_size: 16
 
      

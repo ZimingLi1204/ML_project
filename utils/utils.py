@@ -57,7 +57,7 @@ def get_promt(
             coord_set[:, 0] = coor_1d // mask.shape[0]
             coord_set[:, 1] = coor_1d % mask.shape[0]
             # 随机选point_size个点
-            avg = np.mean(coord_set.astype(np.float32), axis=0).astype(np.int16)
+            avg = np.mean(coord_set.astype(np.float32), axis=0).astype(np.int32)
             argmin = np.argmin(np.sum((coord_set - avg) ** 2, axis=1))
             # 选中心点
             coord = np.array([[coord_set[argmin, 0], coord_set[argmin, 1]]])
@@ -81,7 +81,7 @@ def get_promt(
         if center_point:
             coord = np.empty((0, 2), dtype=np.int32)
             for m in range(one_point_num):
-                coord_set = np.zeros((point_size, 2), dtype=np.int16)
+                coord_set = np.zeros((point_size, 2), dtype=np.int32)
                 coor_1d = np.random.choice(
                     mask.shape[0] * mask.shape[1],
                     size=point_size,
@@ -91,14 +91,14 @@ def get_promt(
                 coord_set[:, 0] = coor_1d // mask.shape[0]
                 coord_set[:, 1] = coor_1d % mask.shape[0]
                 # 随机选point_size个1 label点
-                avg = np.mean(coord_set.astype(np.float32), axis=0).astype(np.int16)
+                avg = np.mean(coord_set.astype(np.float32), axis=0).astype(np.int32)
                 argmin = np.argmin(np.sum((coord_set - avg) ** 2, axis=1))
                 # 选中心点
                 coord = np.concatenate(
                     (coord, [[coord_set[argmin, 0], coord_set[argmin, 1]]])
                 )
             for m in range(zero_point_num):
-                coord_set = np.zeros((point_size, 2), dtype=np.int16)
+                coord_set = np.zeros((point_size, 2), dtype=np.int32)
                 coor_1d = np.random.choice(
                     mask.shape[0] * mask.shape[1],
                     size=point_size,
@@ -108,16 +108,17 @@ def get_promt(
                 coord_set[:, 0] = coor_1d // mask.shape[0]
                 coord_set[:, 1] = coor_1d % mask.shape[0]
                 # 随机选point_size个0 label点
-                avg = np.mean(coord_set.astype(np.float32), axis=0).astype(np.int16)
+                avg = np.mean(coord_set.astype(np.float32), axis=0).astype(np.int32)
                 argmin = np.argmin(np.sum((coord_set - avg) ** 2, axis=1))
                 # 选中心点
                 coord = np.concatenate(
                     (coord, [[coord_set[argmin, 0], coord_set[argmin, 1]]])
                 )
-            label = np.array([mask[coord[i][0]][coord[i][1]] for i in range(point_num)])
+            # label = np.array([mask[coord[i][0]][coord[i][1]] for i in range(point_num)])
+            label = mask[coord[:, 0], coord[:, 1]]
             promt = coord, label
         else:
-            coord = np.zeros((one_point_num, 2), dtype=np.int32)
+            coord = np.zeros((point_num, 2), dtype=np.int32)
             coor_1d_1 = np.random.choice(
                 mask.shape[0] * mask.shape[1],
                 size=one_point_num,
@@ -130,12 +131,14 @@ def get_promt(
                 p=(1 - mask.reshape(-1)) / (1 - mask).sum(),
                 replace=(1 - mask).sum() < zero_point_num,
             )
-            coor_1d = np.concatenate(coor_1d_0, coor_1d_1)
+            coor_1d = np.concatenate((coor_1d_0, coor_1d_1), axis=0)
             coord[:, 0] = coor_1d // mask.shape[0]
             coord[:, 1] = coor_1d % mask.shape[0]
-            label = np.array(
-                [mask[coord[i][0]][coord[i][1]] for i in range(one_point_num)]
-            )
+            # label = np.array(
+            #     [mask[coord[i][0]][coord[i][1]] for i in range(one_point_num)]
+            # )
+            # pdb.set_trace()
+            label = mask[coord[:, 0], coord[:, 1]]
             promt = coord, label
 
     elif promt_type == "box":  # 边界框  形如XYXY
