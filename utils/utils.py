@@ -53,7 +53,7 @@ def get_promt(
             coord_set[:, 0] = coor_1d // mask.shape[0]
             coord_set[:, 1] = coor_1d % mask.shape[0]
             # 随机选point_size个点
-            avg = np.mean(coord_set.astype(np.float32)).astype(np.int16)
+            avg = np.mean(coord_set.astype(np.float32), axis=0).astype(np.int16)
             argmin = np.argmin(np.sum((coord_set - avg) ** 2, axis=1))
             # 选中心点
             coord = np.array([[coord_set[argmin, 0], coord_set[argmin, 1]]])
@@ -87,7 +87,7 @@ def get_promt(
                 coord_set[:, 0] = coor_1d // mask.shape[0]
                 coord_set[:, 1] = coor_1d % mask.shape[0]
                 # 随机选point_size个点
-                avg = np.mean(coord_set.astype(np.float32)).astype(np.int16)
+                avg = np.mean(coord_set.astype(np.float32), axis=0).astype(np.int16)
                 argmin = np.argmin(np.sum((coord_set - avg) ** 2, axis=1))
                 # 选中心点
                 coord = np.concatenate(

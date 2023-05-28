@@ -317,7 +317,7 @@ class finetune_sam():
             
             if torch.is_tensor(promt_label):
                 promt_label = promt_label.to(self.device).unsqueeze(0)
-            elif isinstance(promt_label, np.array):
+            elif type(promt_label) is np.ndarray:
                 promt_label = torch.from_numpy(promt_label).to(self.device).unsqueeze(0)
             elif promt_label != -1:
                 promt_label = torch.from_numpy(promt_label).to(self.device).unsqueeze(0)
