@@ -21,7 +21,7 @@ python main.py --group_name finetune_points --save_name bc32_weighit_decay1e-3_a
 
 ###test
 python main.py --group_name debug --save_name test_promt \
---use_embedded --promt_type box \
+--use_embedded --promt_type single_point \
 --gpu_id 0 --test --data_root /BTCV_testset
 
 python main.py --group_name debug --save_name test_dice \

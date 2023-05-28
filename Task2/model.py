@@ -137,11 +137,11 @@ class finetune_sam():
                         promt_type = promt_type[0]
                     
                     if promt_type == 'box':
-                        boxes = promt * self.input_size[0] / self.original_image_size[0]
+                        boxes = promt * (self.input_size[0] / self.original_image_size[0])
                     elif promt_type == 'mask':
                         masks = promt
                     elif promt_type == 'points' or promt_type == 'single_point':
-                        points = promt * self.input_size[0] / self.original_image_size[0], promt_label
+                        points = promt * (self.input_size[0] / self.original_image_size[0]), promt_label
                     else:
                         raise NotImplementedError
                                             
@@ -244,11 +244,11 @@ class finetune_sam():
                     promt_type = promt_type[0]
 
                 if promt_type == 'box':
-                    boxes = promt * self.input_size[0] / self.original_image_size[0]
+                    boxes = promt * (self.input_size[0] / self.original_image_size[0])
                 elif promt_type == 'mask':
                     masks = promt
                 elif promt_type == 'points' or promt_type == 'single_point':
-                    points = promt * self.input_size[0] / self.original_image_size[0], promt_label
+                    points = promt * (self.input_size[0] / self.original_image_size[0]), promt_label
                 else:
                     raise NotImplementedError                    
                 
@@ -336,16 +336,16 @@ class finetune_sam():
                 
                 ###构建promt
                 points, boxes, masks = None, None, None
-                
-                if isinstance(promt_type, list):
+                # pdb.set_trace()
+                if isinstance(promt_type, tuple):
                     promt_type = promt_type[0]
 
                 if promt_type == 'box':
-                    boxes = promt * self.input_size[0] / self.original_image_size[0]
+                    boxes = promt * (self.input_size[0] / self.original_image_size[0])
                 elif promt_type == 'mask':
                     masks = promt
                 elif promt_type == 'points' or promt_type == 'single_point':
-                    points = promt * self.input_size[0] / self.original_image_size[0], promt_label
+                    points = promt * (self.input_size[0] / self.original_image_size[0]), promt_label
                 else:
                     raise NotImplementedError                    
                 

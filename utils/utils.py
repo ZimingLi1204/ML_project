@@ -40,10 +40,10 @@ def get_promt(
     promt = None
 
     mask = mask.astype(np.uint8)
-
+    
     if promt_type == "single_point":  # 单点 1个XY坐标 和 1个01 label
         if center_point:
-            coord_set = np.zeros((point_size, 2), dtype=np.int16)
+            coord_set = np.zeros((point_size, 2), dtype=np.int32)
             coor_1d = np.random.choice(
                 mask.shape[0] * mask.shape[1],
                 size=point_size,
@@ -53,15 +53,16 @@ def get_promt(
             coord_set[:, 0] = coor_1d // mask.shape[0]
             coord_set[:, 1] = coor_1d % mask.shape[0]
             # 随机选point_size个点
-            avg = np.mean(coord_set.astype(np.float32), axis=0).astype(np.int16)
+            avg = np.mean(coord_set.astype(np.float32), axis=0).astype(np.int32)
             argmin = np.argmin(np.sum((coord_set - avg) ** 2, axis=1))
             # 选中心点
             coord = np.array([[coord_set[argmin, 0], coord_set[argmin, 1]]])
             label = np.array([1])
             promt = coord, label
+            # pdb.set_trace()
         else:
             # 随机取一个在mask前景中的XY坐标
-            coord = np.zeros((1, 2), dtype=np.int16)
+            coord = np.zeros((1, 2), dtype=np.int32)
             coor_1d = np.random.choice(
                 mask.shape[0] * mask.shape[1],
                 size=1,
@@ -75,9 +76,9 @@ def get_promt(
 
     elif promt_type == "points":  # 多点   N个XY坐标 和 N个01 label
         if center_point:
-            coord = np.empty((0, 2), dtype=np.int16)
+            coord = np.empty((0, 2), dtype=np.int32)
             for m in range(point_num):
-                coord_set = np.zeros((point_size, 2), dtype=np.int16)
+                coord_set = np.zeros((point_size, 2), dtype=np.int32)
                 coor_1d = np.random.choice(
                     mask.shape[0] * mask.shape[1],
                     size=point_size,
@@ -87,7 +88,7 @@ def get_promt(
                 coord_set[:, 0] = coor_1d // mask.shape[0]
                 coord_set[:, 1] = coor_1d % mask.shape[0]
                 # 随机选point_size个点
-                avg = np.mean(coord_set.astype(np.float32), axis=0).astype(np.int16)
+                avg = np.mean(coord_set.astype(np.float32), axis=0).astype(np.int32)
                 argmin = np.argmin(np.sum((coord_set - avg) ** 2, axis=1))
                 # 选中心点
                 coord = np.concatenate(
@@ -96,7 +97,7 @@ def get_promt(
             label = np.ones((point_num,), dtype=np.uint8)
             promt = coord, label
         else:
-            coord = np.zeros((point_num, 2), dtype=np.int16)
+            coord = np.zeros((point_num, 2), dtype=np.int32)
             coor_1d = np.random.choice(
                 mask.shape[0] * mask.shape[1],
                 size=point_num,
@@ -135,9 +136,10 @@ if __name__ == "__main__":
     mask = np.zeros((512, 512), dtype=np.uint8)
     mask[200:220, 210:280] = 1
 
-    get_promt(
+    promt, promt_label = get_promt(
         img=None,
         mask=mask,
         promt_type="points",
         center_point=False,
     )
+    print(promt, promt_label)
