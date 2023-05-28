@@ -25,7 +25,8 @@ def get_promt(
     img,
     mask,
     promt_type="single_point",
-    point_num=8,  # points 选取的点数
+    point_num=16,  # points 选取的点数
+    mask_per=0.5,  # points 选取的1-label点比例
     center_point=True,
     # 选点模式，False 为直接随机选点
     # True 为先随机选出point_size个点(coord_size)再选出最中心的点
@@ -40,7 +41,10 @@ def get_promt(
     promt = None
 
     mask = mask.astype(np.uint8)
-    
+
+    one_point_num = int(point_num * mask_per)  # points 选取的0-label点数
+    zero_point_num = point_num - one_point_num  # points 选取的1-label点数
+
     if promt_type == "single_point":  # 单点 1个XY坐标 和 1个01 label
         if center_point:
             coord_set = np.zeros((point_size, 2), dtype=np.int32)
@@ -53,13 +57,12 @@ def get_promt(
             coord_set[:, 0] = coor_1d // mask.shape[0]
             coord_set[:, 1] = coor_1d % mask.shape[0]
             # 随机选point_size个点
-            avg = np.mean(coord_set.astype(np.float32), axis=0).astype(np.int32)
+            avg = np.mean(coord_set.astype(np.float32), axis=0).astype(np.int16)
             argmin = np.argmin(np.sum((coord_set - avg) ** 2, axis=1))
             # 选中心点
             coord = np.array([[coord_set[argmin, 0], coord_set[argmin, 1]]])
             label = np.array([1])
             promt = coord, label
-            # pdb.set_trace()
         else:
             # 随机取一个在mask前景中的XY坐标
             coord = np.zeros((1, 2), dtype=np.int32)
@@ -77,8 +80,8 @@ def get_promt(
     elif promt_type == "points":  # 多点   N个XY坐标 和 N个01 label
         if center_point:
             coord = np.empty((0, 2), dtype=np.int32)
-            for m in range(point_num):
-                coord_set = np.zeros((point_size, 2), dtype=np.int32)
+            for m in range(one_point_num):
+                coord_set = np.zeros((point_size, 2), dtype=np.int16)
                 coor_1d = np.random.choice(
                     mask.shape[0] * mask.shape[1],
                     size=point_size,
@@ -87,26 +90,52 @@ def get_promt(
                 )
                 coord_set[:, 0] = coor_1d // mask.shape[0]
                 coord_set[:, 1] = coor_1d % mask.shape[0]
-                # 随机选point_size个点
-                avg = np.mean(coord_set.astype(np.float32), axis=0).astype(np.int32)
+                # 随机选point_size个1 label点
+                avg = np.mean(coord_set.astype(np.float32), axis=0).astype(np.int16)
                 argmin = np.argmin(np.sum((coord_set - avg) ** 2, axis=1))
                 # 选中心点
                 coord = np.concatenate(
                     (coord, [[coord_set[argmin, 0], coord_set[argmin, 1]]])
                 )
-            label = np.ones((point_num,), dtype=np.uint8)
+            for m in range(zero_point_num):
+                coord_set = np.zeros((point_size, 2), dtype=np.int16)
+                coor_1d = np.random.choice(
+                    mask.shape[0] * mask.shape[1],
+                    size=point_size,
+                    p=(1 - mask.reshape(-1)) / ((1 - mask).sum()),
+                    replace=(1 - mask).sum() < point_size,
+                )
+                coord_set[:, 0] = coor_1d // mask.shape[0]
+                coord_set[:, 1] = coor_1d % mask.shape[0]
+                # 随机选point_size个0 label点
+                avg = np.mean(coord_set.astype(np.float32), axis=0).astype(np.int16)
+                argmin = np.argmin(np.sum((coord_set - avg) ** 2, axis=1))
+                # 选中心点
+                coord = np.concatenate(
+                    (coord, [[coord_set[argmin, 0], coord_set[argmin, 1]]])
+                )
+            label = np.array([mask[coord[i][0]][coord[i][1]] for i in range(point_num)])
             promt = coord, label
         else:
-            coord = np.zeros((point_num, 2), dtype=np.int32)
-            coor_1d = np.random.choice(
+            coord = np.zeros((one_point_num, 2), dtype=np.int32)
+            coor_1d_1 = np.random.choice(
                 mask.shape[0] * mask.shape[1],
-                size=point_num,
+                size=one_point_num,
                 p=mask.reshape(-1) / mask.sum(),
-                replace=mask.sum() < point_num,
+                replace=mask.sum() < one_point_num,
             )
+            coor_1d_0 = np.random.choice(
+                mask.shape[0] * mask.shape[1],
+                size=zero_point_num,
+                p=(1 - mask.reshape(-1)) / (1 - mask).sum(),
+                replace=(1 - mask).sum() < zero_point_num,
+            )
+            coor_1d = np.concatenate(coor_1d_0, coor_1d_1)
             coord[:, 0] = coor_1d // mask.shape[0]
             coord[:, 1] = coor_1d % mask.shape[0]
-            label = np.ones((point_num,), dtype=np.uint8)
+            label = np.array(
+                [mask[coord[i][0]][coord[i][1]] for i in range(one_point_num)]
+            )
             promt = coord, label
 
     elif promt_type == "box":  # 边界框  形如XYXY
@@ -136,10 +165,9 @@ if __name__ == "__main__":
     mask = np.zeros((512, 512), dtype=np.uint8)
     mask[200:220, 210:280] = 1
 
-    promt, promt_label = get_promt(
+    get_promt(
         img=None,
         mask=mask,
         promt_type="points",
         center_point=False,
     )
-    print(promt, promt_label)
