@@ -202,7 +202,7 @@ def save_embedded_data():
 
 
     data_root = "BTCV_dataset1"
-    device = "cuda:0"
+    device = "cuda:1"
     train_data_dir = os.path.join(data_root, "pre_processed_dataset1_train.npz")
     val_data_dir = os.path.join(data_root, "pre_processed_dataset1_val.npz")
     test_data_dir = os.path.join(data_root, "pre_processed_dataset1_test.npz")
@@ -220,45 +220,49 @@ def save_embedded_data():
 
     ####可以根据自己的gpu显存大小改batch size
     bc = 1
-
+    
     #training_data
 
-    # pbar = tqdm(range(train_img.shape[0]//bc), ncols=90, desc='Train')
-    # train_data_embedded = np.zeros((train_img.shape[0], 256, 64, 64), dtype=np.float32)
-    # for i in pbar:
-    #     train_data_embedded[bc*i: bc*(i+1)] = embedding_single_img(train_img[bc*i: bc*(i+1)], transform=transform, sam_model=sam_model, device=device)
-    # if bc * (train_img.shape[0]//bc) < train_img.shape[0]:
-    #     train_data_embedded[bc * (train_img.shape[0]//bc):] = (embedding_single_img(train_img[bc * (train_img.shape[0]//bc):], transform=transform, sam_model=sam_model, device=device))
+    pbar = tqdm(range(train_img.shape[0]//bc), ncols=90, desc='Train')
+    train_data_embedded = np.zeros((train_img.shape[0], 256, 64, 64), dtype=np.float32)
+    for i in pbar:
+        train_data_embedded[bc*i: bc*(i+1)] = embedding_single_img(train_img[bc*i: bc*(i+1)], transform=transform, sam_model=sam_model, device=device)
+    if bc * (train_img.shape[0]//bc) < train_img.shape[0]:
+        train_data_embedded[bc * (train_img.shape[0]//bc):] = (embedding_single_img(train_img[bc * (train_img.shape[0]//bc):], transform=transform, sam_model=sam_model, device=device))
     
-    # train_data_newdir = os.path.join(data_root, "vit-h_embedding_bc1_train.npy")
+    train_data_newdir = os.path.join(data_root, "vit-h_embedding_bc1_train.npy")
    
-    # np.save(train_data_newdir, train_data_embedded)
+    np.save(train_data_newdir, train_data_embedded)
+    print("Data Saved")
 
     # #val_img
-
-    # pbar = tqdm(range(val_img.shape[0]//bc), ncols=90, desc='Val')
-    # val_data_embedded = np.zeros((val_img.shape[0], 256, 64, 64), dtype=np.float32)
-    # for i in pbar:
-    #     val_data_embedded[bc*i: bc*(i+1)] = embedding_single_img(val_img[bc*i: bc*(i+1)], transform=transform, sam_model=sam_model, device=device)
-    # if bc * (val_img.shape[0]//bc) < val_img.shape[0]:
-    #     val_data_embedded[bc * (val_img.shape[0]//bc):] = (embedding_single_img(val_img[bc * (val_img.shape[0]//bc):], transform=transform, sam_model=sam_model, device=device))
+    '''
+    pbar = tqdm(range(val_img.shape[0]//bc), ncols=90, desc='Val')
+    val_data_embedded = np.zeros((val_img.shape[0], 256, 64, 64), dtype=np.float32)
+    for i in pbar:
+        val_data_embedded[bc*i: bc*(i+1)] = embedding_single_img(val_img[bc*i: bc*(i+1)], transform=transform, sam_model=sam_model, device=device)
+    if bc * (val_img.shape[0]//bc) < val_img.shape[0]:
+        val_data_embedded[bc * (val_img.shape[0]//bc):] = (embedding_single_img(val_img[bc * (val_img.shape[0]//bc):], transform=transform, sam_model=sam_model, device=device))
     
-    # val_data_newdir = os.path.join(data_root, "vit-h_embedding_bc1_val.npy")
-    # np.save(val_data_newdir, val_data_embedded)
-
+    val_data_newdir = os.path.join(data_root, "vit-h_embedding_bc1_val.npy")
+    np.save(val_data_newdir, val_data_embedded)
+    print("Data Saved")
+    '''
     # #test_img
-
+    '''
     pbar = tqdm(range(test_img.shape[0]//bc), ncols=90, desc='Test')
     test_data_embedded = np.zeros((test_img.shape[0], 256, 64, 64), dtype=np.float32)
+
     for i in pbar:
         test_data_embedded[bc*i: bc*(i+1)] = embedding_single_img(test_img[bc*i: bc*(i+1)], transform=transform, sam_model=sam_model, device=device)
     if bc * (test_img.shape[0]//bc) < test_img.shape[0]:
         test_data_embedded[bc * (test_img.shape[0]//bc):] = (embedding_single_img(test_img[bc * (test_img.shape[0]//bc):], transform=transform, sam_model=sam_model, device=device))
     
-    data_root = '/'
+    #data_root = '/'
     test_data_newdir = os.path.join(data_root, "vit-h_embedding_bc1_test.npy")
 
     np.save(test_data_newdir, test_data_embedded)
-
+    print("Data Saved")
+    '''
 if __name__ == '__main__':
     save_embedded_data()
