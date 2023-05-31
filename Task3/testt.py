@@ -13,6 +13,7 @@ import scipy.io as scio
 import gc
 from tqdm.auto import tqdm
 from utils.utils import get_promt
+import matplotlib.pyplot as plt
 
 class Maskdataset(Dataset):
 
@@ -24,8 +25,8 @@ class Maskdataset(Dataset):
         slice_id: 每个data对应的切片编号 每个CT有80-150个切片    list中每个元素格式为 str(xxx)    N * 1
         category: 每个mask对应的类别 范围为1-13     N * 1
         '''
-        self.img = img
-        self.mask = mask
+        self.img = img.astype(np.float32)
+        self.mask = mask.astype(np.float32)
         self.name = name
         self.slice_id = slice_id
         self.category = category.astype(np.int64) - 1
@@ -39,8 +40,8 @@ class Maskdataset(Dataset):
         # self.img = (self.img-self.mean.reshape(1, 512, 512).repeat(N, axis=0)) / self.std.reshape(1, 512, 512).repeat(N, axis=0)
         
         
-        #self.data_merge = np.concatenate([self.mask.reshape(-1, 1, 512, 512), self.img.reshape(-1, 1, 512, 512)], axis=1)
-        self.data_merge = np.multiply(self.img, self.mask)
+        # self.data_merge = np.concatenate([self.mask.reshape(-1, 1, 512, 512), self.img.reshape(-1, 1, 512, 512)], axis=1)
+        self.data_merge = np.multiply(self.mask, self.img)
         self.data_merge = self.data_merge.reshape(-1, 1, 512, 512)
         print(self.data_merge.shape)
         # breakpoint()
@@ -52,12 +53,12 @@ class Maskdataset(Dataset):
 
     def __getitem__(self, index):
 
-        img = torch.from_numpy(self.img[index]).float()
-        mask = torch.from_numpy(self.mask[index]).float()
+        # img = torch.from_numpy(self.img[index]).float()
+        # mask = torch.from_numpy(self.mask[index]).float()
         promt = get_promt(self.img[index], self.mask[index], promt_type='box').astype(np.float32)
         data_merge = self.data_merge[index]
         category = self.category[0][index]
-        return data_merge, category, promt, img, mask
+        return data_merge, category, promt
 
 class CNN(nn.Module):
     def __init__(self, num_classes):
@@ -172,7 +173,7 @@ if __name__ == "__main__":
     
     if use_checkpoint_asinit:
         checkpoint_id = cfg["train"]["checkpoint_id"]
-        cnn = torch.load("../Task3/checkpoints/epoch{}.pth".format(checkpoint_id)).to(device)
+        cnn = torch.load("../Task3/checkpoints/1x512x512_epoch{}.pth".format(checkpoint_id)).to(device)
     else:
         cnn = CNN(num_classes=13).to(device)
     # d1 = torch.randint(0, 1, size=(1, 2, 512, 512)).float().cuda()
@@ -224,27 +225,23 @@ if __name__ == "__main__":
     writer = SummaryWriter(log_dir=cfg['train']['log_dir'])
     n_iter = 0
     total_acc = []
-
-    index = 0
-    for _, _, _, img, _ in dataset_train:
-        writer.add_image("raw_img_dataset", img, index, dataformats="HW")
-        index += 1
         
     print("#######################training start#########################")
 
     cnn.train()
     for epoch in tqdm(range(cfg["train"]["max_epoch"]), ncols=90, desc="epoch", position=0):
         # print(cnn.test(val_dataloader, bs))
-        for data_merge, category, promt, img, mask in tqdm(train_dataloader, ncols=90, desc="train", position=2):
+        for data_merge, category, promt in tqdm(train_dataloader, ncols=90, desc="train", position=2):
             #print(type(data_merge), type(promt))
             #print(data_merge.dtype, promt.dtype)
             #print(data_merge.shape)
             # print(mask.shape, category.shape)   # (bs, 1, 512, 512)   (bs,)
-            print(img[0])
-            if n_iter % 100 == 0:
-                writer.add_image("raw_data", data_merge[0][0], n_iter, dataformats="HW")
-                writer.add_image("raw_img", img[0], n_iter, dataformats="HW")
-                writer.add_image("raw_mask", mask[0], n_iter, dataformats="HW")
+            # plt.imsave("1000_qwq.jpg", np.full((512, 512), 0))
+            # plt.imsave("img_qwq.jpg", img[0])
+            # plt.imsave("mask_qwq.jpg", mask[0])
+            # plt.imsave("merge_qwq.jpg", data_merge[0][0])
+            # breakpoint()
+            
             category = category.to(device)
             data_merge = data_merge.to(device)
             promt = promt.to(device)
@@ -257,8 +254,12 @@ if __name__ == "__main__":
 
             n_iter += 1
             writer.add_scalar('loss/train', loss.cpu(), n_iter)
+            # if n_iter % 100 == 0:
+            #     writer.add_image("raw_data", data_merge[0][0].int(), n_iter, dataformats="HW")
+            #     writer.add_image("raw_img", img[0].int(), n_iter, dataformats="HW")
+            #     writer.add_image("raw_mask", mask[0].int(), n_iter, dataformats="HW")
 
-        torch.save(cnn, "../Task3/checkpoints/epoch{}.pth".format(epoch))
+        torch.save(cnn, "../Task3/checkpoints/1x512x512_epoch{}.pth".format(epoch+50))
         cnn.eval()
         acc, val_loss = cnn.test(val_dataloader, bs)
         cnn.train()

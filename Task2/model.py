@@ -16,6 +16,7 @@ from utils.loss import multi_loss
 from utils.metrics import dice_coefficient
 from torch.optim.lr_scheduler import LinearLR
 
+
 class Mysam(Sam):
     def __init__(self) -> None:
         super.__init__()

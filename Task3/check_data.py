@@ -73,10 +73,13 @@ name = scio.loadmat("../BTCV_dataset1/pre_processed_dataset1_train.mat")["name"]
 dataset = Maskdataset(img=img, mask=mask, name=name, slice_id=slice_id,
                                 category=category)
 
-img = torch.from_numpy(img_data[0, :, :]).float()
+
+img = dataset[0][3]    
+# img_data = torch.from_numpy(img_data[0, :, :]).float()
+print(img.shape)
 plt.imshow(img)
 plt.show()
-plt.imsave("q1.jpg", img)
+plt.imsave("q.jpg", img)
 breakpoint()
 
 for iter in range(len(img_data)):
