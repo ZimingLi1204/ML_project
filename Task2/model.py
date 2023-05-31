@@ -14,7 +14,7 @@ from utils.pytorch_loss.focal_loss import FocalLossV2
 from utils.pytorch_loss.soft_dice_loss import SoftDiceLossV2
 from utils.loss import multi_loss
 from utils.metrics import dice_coefficient
-from torch.optim.lr_scheduler import LinearLR
+from torch.optim.lr_scheduler import LinearLR, StepLR
 
 class Mysam(Sam):
     def __init__(self) -> None:
@@ -41,26 +41,37 @@ class finetune_sam():
         self.loss = cfg['train']['loss']
         self.lr = cfg['train']['learning_rate']
         self.linear_warmup = cfg["train"]["linear_warmup"]
+        self.lr_decay = cfg["train"]["lr_decay"]
 
+        ###optimizer
         if self.optim == 'Adam':
             self.optimizer = torch.optim.Adam(self.sam_model.mask_decoder.parameters(), lr=self.lr, weight_decay=cfg['train']['weight_decay']) 
         elif self.optim == 'AdamW':
             self.optimizer = torch.optim.AdamW(self.sam_model.mask_decoder.parameters(), lr=self.lr, weight_decay=cfg['train']['weight_decay']) 
         else:
             raise NotImplementedError
-        
-        if self.linear_warmup:
-            self.scheduler = LinearLR(self.optimizer, start_factor=cfg["train"]["start_factor"], total_iters=cfg["train"]["warmup_iter"])
 
+        ###loss
         if self.loss == 'MSE':    
-            self.loss_fn = torch.nn.MSELoss()
+            self.loss_fn = nn.MSELoss()
         elif self.loss == 'sam_loss':
             self.focal_loss = FocalLossV2()
             self.dice_loss = SoftDiceLossV2()
             self.loss_fn = multi_loss(loss_list = [self.focal_loss, self.dice_loss], weight_list = cfg["train"]["weight_list"])
         else:
             raise NotImplementedError
+        self.iou_loss_fn = nn.MSELoss()
             
+        ###Training tricks
+        if self.linear_warmup:
+            self.warmup_scheduler = LinearLR(self.optimizer, start_factor=cfg["train"]["start_factor"], total_iters=cfg["train"]["warmup_iter"])
+
+        if self.lr_decay:
+            if cfg["train"]["lr_schedular"] == "StepLR":
+                self.decay_schedular = StepLR(self.optimizer, step_size=cfg["train"]["step_size"], gamma=cfg["train"]["schedular_gamma"])
+            else:
+                raise NotImplementedError
+
         self.cfg = cfg
         self.transform = ResizeLongestSide(self.cfg['data']['input_size'][0])
 
@@ -90,9 +101,11 @@ class finetune_sam():
             
             # ###eval结果并save model
             result = self.val(val_dataset, metrics=metrics)
-            dice_val, loss_val, iou_val = result
+            dice_val, loss_val, mask_loss_val, iou_loss_val, iou_val = result
             if self.use_tensorboard:
                 writer.add_scalar('loss/val', loss_val, epoch)
+                writer.add_scalar('loss/mask_loss_val', mask_loss_val, epoch)
+                writer.add_scalar('loss/iou_val', iou_loss_val, epoch)
                 writer.add_scalar('dice/val', dice_val, epoch)
                 writer.add_scalar('iou/val', iou_val, epoch)
 
@@ -169,19 +182,26 @@ class finetune_sam():
 
                 ###计算loss, update
                 # pdb.set_trace()
+                
                 if self.loss == 'MSE':
-                    loss = self.loss_fn(binary_mask, gt_mask)
+                    mask_loss = self.loss_fn(binary_mask, gt_mask)
                 else:
-                    loss = self.loss_fn(upscaled_masks, gt_mask)
+                    mask_loss = self.loss_fn(upscaled_masks, gt_mask)
+                
+                #iou and iou loss 
+                iou = torch.sum(binary_mask * gt_mask, dim=[-1, -2]) / torch.sum(gt_mask, dim=[-1, -2])
+                iou_loss = self.iou_loss_fn(iou_predictions, iou) 
+                
+                loss = mask_loss + iou_loss * self.cfg["train"]["iou_scale"]
+
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
 
                 if self.linear_warmup and n_iter < self.cfg["train"]["warmup_iter"]:
-                    self.scheduler.step()
-
-                #iou 
-                iou = (binary_mask * gt_mask).sum() / gt_mask.sum()
+                    self.warmup_scheduler.step()
+                elif self.lr_decay:
+                    self.decay_schedular.step()
 
                 #dice_coef
                 dice_coef = (2 * torch.sum((binary_mask * gt_mask), dim=[-1, -2]) / (torch.sum(binary_mask, dim=[-2, -1]) + torch.sum(gt_mask, dim=[-2, -1]))).mean() 
@@ -193,8 +213,10 @@ class finetune_sam():
                 n_iter += 1
                 if self.use_tensorboard:
                     writer.add_scalar('loss/train', loss.cpu(), n_iter)
+                    writer.add_scalar('loss/train_mask_loss', mask_loss.cpu(), n_iter)
+                    writer.add_scalar('loss/train_iou_loss', iou_loss.cpu(), n_iter)
                     writer.add_scalar('train/lr', self.optimizer.param_groups[0]['lr'] , n_iter)
-                    writer.add_scalar('iou/train', iou.cpu(), n_iter) #因为只设置了一个mask, 所以直接取0
+                    writer.add_scalar('iou/train', iou.mean().cpu(), n_iter) 
                     writer.add_scalar('dice/train', dice_coef.cpu(), n_iter) #因为只设置了一个mask, 所以直接取0
 
 
@@ -204,6 +226,8 @@ class finetune_sam():
 
         ###调用task1中的val函数
         loss_all = []
+        iou_loss_all = []
+        mask_loss_all = []
         iou_all = []
         mask_all = np.zeros([len(dataset), self.original_image_size[0], self.original_image_size[1]], dtype=np.int8)
 
@@ -271,30 +295,38 @@ class finetune_sam():
                 upscaled_masks = self.sam_model.postprocess_masks(low_res_masks, self.input_size, self.original_image_size).to(self.device)
                 binary_mask = normalize(threshold(upscaled_masks, 0.0, 0)).to(self.device).squeeze() #低于0的扔掉, 高于0normalize到1
 
-                #loss                
+                #loss
                 if self.loss == 'MSE':
-                    loss = self.loss_fn(binary_mask, gt_mask)
+                    mask_loss = self.loss_fn(binary_mask, gt_mask)
                 else:
-                    loss = self.loss_fn(upscaled_masks, gt_mask)
-                    
-                ###iou
-                iou = (binary_mask * gt_mask).sum() / gt_mask.sum()
+                    mask_loss = self.loss_fn(upscaled_masks, gt_mask)
+                
+                #iou and iou loss 
+                iou = torch.sum(binary_mask * gt_mask, dim=[-1, -2]) / torch.sum(gt_mask, dim=[-1, -2])
+                iou_loss = self.iou_loss_fn(iou_predictions, iou) 
+                
+                loss = mask_loss + iou_loss * self.cfg["train"]["iou_scale"]
                 
                 ###汇总
                 loss_all.append(loss.cpu().item())
-                iou_all.append(iou.cpu().item())
+                mask_loss_all.append(mask_loss.cpu().item())
+                iou_loss_all.append(iou_loss.cpu().item())
+                iou_all.append(iou.mean().cpu().item())
                 mask_all[i] = (binary_mask.cpu())
 
 
         loss_all = np.array(loss_all).mean() 
+        iou_loss_all = np.array(iou_loss_all).mean()
+        mask_loss_all = np.array(mask_loss_all).mean()  
         # pdb.set_trace()
         iou_all = np.array(iou_all).mean()
         mDice = metrics.eval_data_processing(6, mask_all)
         print("val mDice:", np.array(mDice).mean())
-
+        print("val loss:", loss_all)
+        print("val iou:", iou_all)
         self.sam_model.train()
 
-        return np.array(mDice).mean(), loss_all, iou_all
+        return np.array(mDice).mean(), loss_all, mask_loss_all, iou_loss_all, iou_all
 
     def test(self, dataset, metrics=None):
 

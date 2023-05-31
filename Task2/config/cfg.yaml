@@ -13,15 +13,21 @@ train:
   learning_rate: 8.e-4
   linear_warmup: False
   start_factor: 0.01
-  warmup_iter: 150
+  warmup_iter: 100
   optimizer: 'AdamW'
   batch_size: 4
   weight_decay: 1.e-3
 
   loss: 'MSE'
   weight_list: [20, 1]
-  
-  max_epoch: 50
+  iou_scale: 0
+
+  lr_decay: False
+  lr_schedular: StepLR
+  schedular_gamma: 0.1
+  step_size: 2000
+
+  max_epoch: 30
   
 
 test:
