@@ -15,3 +15,5 @@ __pycache__
 Task2/out
 Task3/checkpoints
 Task3/log
+/finetune_model
+/data.py
