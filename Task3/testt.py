@@ -31,6 +31,7 @@ class Maskdataset(Dataset):
         self.slice_id = slice_id
         self.category = category.astype(np.int64) - 1
         
+        self.img = self.img / 255
         
         # N = self.img.shape[0]
         # self.mean = np.mean(self.img, axis=0)
@@ -40,9 +41,9 @@ class Maskdataset(Dataset):
         # self.img = (self.img-self.mean.reshape(1, 512, 512).repeat(N, axis=0)) / self.std.reshape(1, 512, 512).repeat(N, axis=0)
         
         
-        # self.data_merge = np.concatenate([self.mask.reshape(-1, 1, 512, 512), self.img.reshape(-1, 1, 512, 512)], axis=1)
-        self.data_merge = np.multiply(self.mask, self.img)
-        self.data_merge = self.data_merge.reshape(-1, 1, 512, 512)
+        self.data_merge = np.concatenate([self.mask.reshape(-1, 1, 512, 512), self.img.reshape(-1, 1, 512, 512)], axis=1)
+        # self.data_merge = np.multiply(self.mask, self.img)
+        self.data_merge = self.data_merge.reshape(-1, 2, 512, 512)
         print(self.data_merge.shape)
         # breakpoint()
         
@@ -69,7 +70,7 @@ class CNN(nn.Module):
 
         # block 1
         #net.append(nn.MaxPool2d(kernel_size=2, stride=2))
-        self.conv1 = nn.Conv2d(in_channels=1, out_channels=4, padding=1, kernel_size=3, stride=2)
+        self.conv1 = nn.Conv2d(in_channels=2, out_channels=4, padding=1, kernel_size=3, stride=2)
         nn.init.kaiming_normal_(self.conv1.weight)
         img_net.append(self.conv1)
         img_net.append(nn.BatchNorm2d(4))
@@ -94,7 +95,6 @@ class CNN(nn.Module):
         self.fc2 = nn.Linear(in_features=20, out_features=self.num_classes)
         nn.init.kaiming_normal_(self.fc2.weight)
         classifier.append(self.fc2)
-        classifier.append(nn.Softmax())
         self.classifier = nn.Sequential(*classifier)
         
         '''
@@ -144,22 +144,22 @@ class CNN(nn.Module):
         acc = 0
         loss = 0
         for data_merge, gt_category, promt in tqdm(val_dataloader, ncols=90, desc="val", position=1):
-            
-            data_merge = data_merge.to(device)
-            gt_category = gt_category.to(device)
-            promt = promt.to(device)
-            pred_category = self.forward(data_merge, promt)
-            loss += loss_fn(pred_category, gt_category)
-            pred_category = torch.argmax(pred_category, dim=1)
-            for index in range(len(gt_category)):
-                if (pred_category[index] == gt_category[index]):
-                    acc += 1
+            with torch.no_grad():
+                data_merge = data_merge.to(device)
+                gt_category = gt_category.to(device)
+                promt = promt.to(device)
+                pred_category = self.forward(data_merge, promt)
+                loss += loss_fn(pred_category, gt_category)
+                pred_category = torch.argmax(pred_category, dim=1)
+                for index in range(len(gt_category)):
+                    if (pred_category[index] == gt_category[index]):
+                        acc += 1
 
         acc = acc / (len(val_dataloader) * bs)
         loss = loss / len(val_dataloader)
 
 
-        return acc, loss.cpu()
+        return acc, loss.detach().cpu()
 
 
 if __name__ == "__main__":

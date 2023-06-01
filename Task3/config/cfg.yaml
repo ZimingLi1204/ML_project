@@ -11,14 +11,16 @@ train:
   group: 'debug'
   save_name: 'debug'
   learning_rate: 5.e-5
+  linear_warmup: False
   warmup_iter: 150
   optimizer: 'AdamW'
   weight_decay: 1.e-3
-  batch_size: 8
+  batch_size: 64
   loss: 'MSE'
   max_epoch: 50
-  use_checkpoint_asinit: True
+  use_checkpoint_asinit: False
   checkpoint_id: 49
+  lambda_classifier: 1
   
 
 test:
@@ -28,8 +30,10 @@ test:
 model:
   model_root: ../pretrain_model
   model_type: vit_h
-  load_decoder: False
-  classifier_root: ../pretrain_model
+  load_decoder: True
+  decoder_path: ../finetune_model/box_8605.pth
+  load_classifier: False
+  classifier_path: ../finetune_model/0.4_1x512x512_epoch49.pth
   classifier_type: cnn
 
 data:
@@ -38,9 +42,14 @@ data:
   split_ratio: 0.2
   img_size: [512, 512]
   input_size: [1024, 1024]
-  use_embedded: True
-  data_name: pre_processed_dataset1
+  use_embedded: False
+  data_name: vit-h_embedding_bc1
   info_name: pre_processed_dataset1
   load_from_disk: False
 
      
+promt:
+  promt_type: "box"
+  center_point: False
+  point_num: 16
+  point_size: 16
