@@ -13,6 +13,7 @@ import scipy.io as scio
 import gc
 from tqdm.auto import tqdm
 from utils.utils import get_promt
+import pdb
 
 class Maskdataset(Dataset):
 
@@ -24,8 +25,8 @@ class Maskdataset(Dataset):
         slice_id: 每个data对应的切片编号 每个CT有80-150个切片    list中每个元素格式为 str(xxx)    N * 1
         category: 每个mask对应的类别 范围为1-13     N * 1
         '''
-        self.img = img
-        self.mask = mask
+        self.img = img.astype(np.float32)
+        self.mask = mask.astype(np.float32)
         self.name = name
         self.slice_id = slice_id
         self.category = category.astype(np.int64) - 1
@@ -36,12 +37,12 @@ class Maskdataset(Dataset):
         # self.std = np.sqrt(np.sum(((self.img - self.mean)**2), axis=0))
         # print(self.mean.shape, self.std.shape)
         # print(self.mean.reshape(1, 512, 512).repeat(N, axis=0).shape)
-        # self.img = (self.img-self.mean.reshape(1, 512, 512).repeat(N, axis=0)) / self.std.reshape(1, 512, 512).repeat(N, axis=0)
+        self.img /= 255.0
         
         
-        #self.data_merge = np.concatenate([self.mask.reshape(-1, 1, 512, 512), self.img.reshape(-1, 1, 512, 512)], axis=1)
-        self.data_merge = np.multiply(self.img, self.mask)
-        self.data_merge = self.data_merge.reshape(-1, 1, 512, 512)
+        self.data_merge = np.concatenate([self.mask.reshape(-1, 1, 512, 512), self.img.reshape(-1, 1, 512, 512)], axis=1)
+        # self.data_merge = np.multiply(self.img, self.mask)
+        # self.data_merge = self.data_merge.reshape(-1, 1, 512, 512)
         print(self.data_merge.shape)
         # breakpoint()
         
@@ -68,32 +69,57 @@ class CNN(nn.Module):
 
         # block 1
         #net.append(nn.MaxPool2d(kernel_size=2, stride=2))
-        self.conv1 = nn.Conv2d(in_channels=1, out_channels=4, padding=1, kernel_size=3, stride=2)
+        self.conv1 = nn.Conv2d(in_channels=2, out_channels=4, padding=1, kernel_size=3, stride=1)
         nn.init.kaiming_normal_(self.conv1.weight)
         img_net.append(self.conv1)
         img_net.append(nn.BatchNorm2d(4))
         img_net.append(nn.ReLU())
         img_net.append(nn.MaxPool2d(kernel_size=2, stride=2))
         
-        self.conv2 = nn.Conv2d(in_channels=4, out_channels=4, padding=1, kernel_size=3, stride=2)
+        self.conv2 = nn.Conv2d(in_channels=4, out_channels=8, padding=1, kernel_size=3, stride=1)
         nn.init.kaiming_normal_(self.conv2.weight)
         img_net.append(self.conv2)
-        img_net.append(nn.BatchNorm2d(4))
+        img_net.append(nn.BatchNorm2d(8))
         img_net.append(nn.ReLU())
-        img_net.append(nn.Dropout(p=0.3))
+        img_net.append(nn.Dropout(p=0.2))
+        img_net.append(nn.MaxPool2d(kernel_size=2, stride=2))
+
+        self.conv3 = nn.Conv2d(in_channels=8, out_channels=8, padding=1, kernel_size=3, stride=1)
+        nn.init.kaiming_normal_(self.conv3.weight)
+        img_net.append(self.conv3)
+        img_net.append(nn.BatchNorm2d(8))
+        img_net.append(nn.ReLU())
+        img_net.append(nn.Dropout(p=0.2))
+        img_net.append(nn.MaxPool2d(kernel_size=2, stride=2))
+
+        self.conv4 = nn.Conv2d(in_channels=8, out_channels=16, padding=1, kernel_size=3, stride=1)
+        nn.init.kaiming_normal_(self.conv4.weight)
+        img_net.append(self.conv4)
+        img_net.append(nn.BatchNorm2d(16))
+        img_net.append(nn.ReLU())
+        img_net.append(nn.Dropout(p=0.2))
+        img_net.append(nn.MaxPool2d(kernel_size=2, stride=2))
+
+        self.conv5 = nn.Conv2d(in_channels=16, out_channels=32, padding=1, kernel_size=3, stride=1)
+        nn.init.kaiming_normal_(self.conv5.weight)
+        img_net.append(self.conv5)
+        img_net.append(nn.BatchNorm2d(32))
+        img_net.append(nn.ReLU())
+        img_net.append(nn.Dropout(p=0.2))
         img_net.append(nn.MaxPool2d(kernel_size=2, stride=2))
         
-        self.fc1 = nn.Linear(in_features=4*32*32, out_features=16)
+        self.fc1 = nn.Linear(in_features=32*16*16, out_features=128)
         nn.init.kaiming_normal_(self.fc1.weight)
+        img_net.append(nn.Dropout(p=0.5))
         img_net.append(nn.Flatten())
         img_net.append(self.fc1)
         self.img_net = nn.Sequential(*img_net)
         
         classifier = []
-        self.fc2 = nn.Linear(in_features=20, out_features=self.num_classes)
+        self.fc2 = nn.Linear(in_features=128, out_features=self.num_classes)
         nn.init.kaiming_normal_(self.fc2.weight)
         classifier.append(self.fc2)
-        classifier.append(nn.Softmax())
+        # classifier.append(nn.Softmax())
         self.classifier = nn.Sequential(*classifier)
         
         '''
@@ -133,7 +159,8 @@ class CNN(nn.Module):
         feat = self.img_net(data)
         # shape = (32, )
         
-        x = torch.cat((feat, prompt), dim=1)
+        # x = torch.cat((feat, prompt), dim=1)
+        x = feat
         
         return self.classifier(x)
 
@@ -142,23 +169,24 @@ class CNN(nn.Module):
         loss_fn = nn.CrossEntropyLoss()
         acc = 0
         loss = 0
-        for data_merge, gt_category, promt in tqdm(val_dataloader, ncols=90, desc="val", position=1):
-            
-            data_merge = data_merge.to(device)
-            gt_category = gt_category.to(device)
-            promt = promt.to(device)
-            pred_category = self.forward(data_merge, promt)
-            loss += loss_fn(pred_category, gt_category)
-            pred_category = torch.argmax(pred_category, dim=1)
-            for index in range(len(gt_category)):
-                if (pred_category[index] == gt_category[index]):
-                    acc += 1
+        for data_merge, gt_category, promt, img, mask in tqdm(val_dataloader, ncols=90, desc="val", position=1):
+            with torch.no_grad():
+                data_merge = data_merge.to(device)
+                gt_category = gt_category.to(device)
+                promt = promt.to(device)
+                pred_category = self.forward(data_merge, promt)
+                loss += loss_fn(pred_category, gt_category)
+                pred_category = torch.argmax(pred_category, dim=1)
+                for index in range(len(gt_category)):
+                    if (pred_category[index] == gt_category[index]):
+                        acc += 1
+        # pdb.set_trace()
 
         acc = acc / (len(val_dataloader) * bs)
         loss = loss / len(val_dataloader)
+        
 
-
-        return acc, loss.cpu()
+        return acc, loss.detach().cpu()
 
 
 if __name__ == "__main__":
@@ -218,17 +246,17 @@ if __name__ == "__main__":
 
 
 
-    optimizer = torch.optim.Adam(cnn.parameters(), lr=cfg["train"]["learning_rate"])
+    optimizer = torch.optim.Adam(cnn.parameters(), lr=cfg["train"]["learning_rate"], weight_decay=1e-3)
     loss_fn = nn.CrossEntropyLoss()
 
     writer = SummaryWriter(log_dir=cfg['train']['log_dir'])
     n_iter = 0
     total_acc = []
 
-    index = 0
-    for _, _, _, img, _ in dataset_train:
-        writer.add_image("raw_img_dataset", img, index, dataformats="HW")
-        index += 1
+    # index = 0
+    # for _, _, _, img, _ in dataset_train:
+    #     writer.add_image("raw_img_dataset", img, index, dataformats="HW")
+    #     index += 1
         
     print("#######################training start#########################")
 
@@ -240,11 +268,11 @@ if __name__ == "__main__":
             #print(data_merge.dtype, promt.dtype)
             #print(data_merge.shape)
             # print(mask.shape, category.shape)   # (bs, 1, 512, 512)   (bs,)
-            print(img[0])
-            if n_iter % 100 == 0:
-                writer.add_image("raw_data", data_merge[0][0], n_iter, dataformats="HW")
-                writer.add_image("raw_img", img[0], n_iter, dataformats="HW")
-                writer.add_image("raw_mask", mask[0], n_iter, dataformats="HW")
+            # print(img[0])
+            # if n_iter % 100 == 0:
+            #     writer.add_image("raw_data", data_merge[0][0], n_iter, dataformats="HW")
+            #     writer.add_image("raw_img", img[0], n_iter, dataformats="HW")
+            #     writer.add_image("raw_mask", mask[0], n_iter, dataformats="HW")
             category = category.to(device)
             data_merge = data_merge.to(device)
             promt = promt.to(device)

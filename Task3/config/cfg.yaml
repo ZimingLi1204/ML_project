@@ -9,12 +9,12 @@ train:
   log_dir: 'log'
   group: 'debug'
   save_name: 'debug'
-  learning_rate: 1.e-6
+  learning_rate: 1.e-4
   optimizer: 'AdamW'
-  batch_size: 8
+  batch_size: 64
   loss: 'MSE'
   max_epoch: 50
-  use_checkpoint_asinit: True
+  use_checkpoint_asinit: False
   checkpoint_id: 25
   
 
