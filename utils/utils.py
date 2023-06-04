@@ -22,7 +22,6 @@ def set_seed(seed, torch_deterministic=False):
 
 
 def get_promt(
-    img,
     mask,
     promt_type="single_point",
     point_num=16,  # points 选取的点数
@@ -140,6 +139,36 @@ def get_promt(
             # pdb.set_trace()
             label = mask[coord[:, 0], coord[:, 1]]
             promt = coord, label
+            
+    elif promt_type == "grid_points":  # 格点 + 中心点
+
+        step = 512 // point_num
+        index_mask = np.zeros_like(mask)
+        index_mask[np.arange(mask.shape[0]) % step == 0] = 1
+        index_mask[0] = 0
+        index_mask[:, np.arange(mask.shape[1]) % step != 0] = 0
+
+        coord = np.stack(np.nonzero(index_mask)).T
+        label = mask[coord[:, 0], coord[:, 1]]
+
+        
+        coord_set = np.zeros((point_size, 2), dtype=np.int32)
+        coor_1d = np.random.choice(
+            mask.shape[0] * mask.shape[1],
+            size=point_size,
+            p=mask.reshape(-1) / mask.sum(),
+            replace=mask.sum() < point_size,
+        )
+        coord_set[:, 0] = coor_1d // mask.shape[0]
+        coord_set[:, 1] = coor_1d % mask.shape[0]
+        # 随机选point_size个点
+        avg = np.mean(coord_set.astype(np.float32), axis=0).astype(np.int32)
+        argmin = np.argmin(np.sum((coord_set - avg) ** 2, axis=1))
+        # 选中心点
+        coord = np.concatenate((coord, np.array([[coord_set[argmin, 0], coord_set[argmin, 1]]])), axis = 0)
+        label = np.concatenate((label, np.array([1])), axis = 0)
+        # pdb.set_trace()
+        promt = coord, label
 
     elif promt_type == "box":  # 边界框  形如XYXY
         retval, labels, stats, centroids = cv2.connectedComponentsWithStats(
@@ -169,8 +198,7 @@ if __name__ == "__main__":
     mask[200:220, 210:280] = 1
 
     get_promt(
-        img=None,
         mask=mask,
-        promt_type="points",
+        promt_type="grid_points",
         center_point=False,
     )

@@ -14,14 +14,14 @@ from utils.pytorch_loss.focal_loss import FocalLossV2
 from utils.pytorch_loss.soft_dice_loss import SoftDiceLossV2
 from utils.loss import multi_loss
 from utils.metrics import dice_coefficient
-from torch.optim.lr_scheduler import LinearLR, StepLR
-
+from torch.optim.lr_scheduler import LinearLR
+from Task3.testt import Maskdataset, CNN
 
 class Mysam(Sam):
     def __init__(self) -> None:
         super.__init__()
 
-class finetune_sam():
+class sam_classifier():
     
     def __init__(self, cfg) -> None:
         self.model_type = cfg["model"]['model_type']
@@ -33,46 +33,49 @@ class finetune_sam():
             self.device += ':' + str(cfg['device_id'])
         self.sam_model = sam_model_registry[self.model_type](checkpoint=sam_checkpoint)
         self.sam_model.to(device=self.device)
-       
+        
+        '''
+            添加 category query
+        '''
+        self.classifier_type = cfg["model"]["classifier_type"]
+        if self.classifier_type == "cnn":
+            self.classifier = CNN(num_classes=13)
+        self.classifier.to(self.device)
+        
         self.use_tensorboard = cfg["train"]['use_tensorboard']
-        self.log_dir = cfg['train']['log_dir']
+        self.log_dir = cfg['train']['log_dir'] # 存 tensorboard 结果
         self.use_embedded = cfg["data"]["use_embedded"]
+        self.checkpoints_dir = cfg["train"]["checkpoints_dir"]
 
         self.optim = cfg['train']['optimizer']
         self.loss = cfg['train']['loss']
         self.lr = cfg['train']['learning_rate']
         self.linear_warmup = cfg["train"]["linear_warmup"]
-        self.lr_decay = cfg["train"]["lr_decay"]
 
-        ###optimizer
         if self.optim == 'Adam':
-            self.optimizer = torch.optim.Adam(self.sam_model.mask_decoder.parameters(), lr=self.lr, weight_decay=cfg['train']['weight_decay']) 
+            self.optimizer = torch.optim.Adam([{"params": self.sam_model.mask_decoder.parameters()},
+                                               {"params": self.classifier.parameters()}], lr=self.lr, weight_decay=cfg['train']['weight_decay']) 
         elif self.optim == 'AdamW':
-            self.optimizer = torch.optim.AdamW(self.sam_model.mask_decoder.parameters(), lr=self.lr, weight_decay=cfg['train']['weight_decay']) 
+            self.optimizer = torch.optim.AdamW([{"params": self.sam_model.mask_decoder.parameters()},
+                                               {"params": self.classifier.parameters()}], lr=self.lr, weight_decay=cfg['train']['weight_decay']) 
         else:
             raise NotImplementedError
+        
+        if self.linear_warmup:
+            self.scheduler = LinearLR(self.optimizer, start_factor=cfg["train"]["start_factor"], total_iters=cfg["train"]["warmup_iter"])
 
-        ###loss
         if self.loss == 'MSE':    
-            self.loss_fn = nn.MSELoss()
+            self.loss_fn = torch.nn.MSELoss()
         elif self.loss == 'sam_loss':
             self.focal_loss = FocalLossV2()
             self.dice_loss = SoftDiceLossV2()
             self.loss_fn = multi_loss(loss_list = [self.focal_loss, self.dice_loss], weight_list = cfg["train"]["weight_list"])
         else:
             raise NotImplementedError
-        self.iou_loss_fn = nn.MSELoss()
+        # 使用 cross_entropy lambda 为其权重
+        self.classifier_loss_fn = nn.CrossEntropyLoss()
+        self.lambda_classifier = cfg["train"]["lambda_classifier"]
             
-        ###Training tricks
-        if self.linear_warmup:
-            self.warmup_scheduler = LinearLR(self.optimizer, start_factor=cfg["train"]["start_factor"], total_iters=cfg["train"]["warmup_iter"])
-
-        if self.lr_decay:
-            if cfg["train"]["lr_schedular"] == "StepLR":
-                self.decay_schedular = StepLR(self.optimizer, step_size=cfg["train"]["step_size"], gamma=cfg["train"]["schedular_gamma"])
-            else:
-                raise NotImplementedError
-
         self.cfg = cfg
         self.transform = ResizeLongestSide(self.cfg['data']['input_size'][0])
 
@@ -88,7 +91,11 @@ class finetune_sam():
     def load_model(self, cfg):
         if cfg["model"]["load_decoder"]:
             self.sam_model.mask_decoder.load_state_dict(torch.load(cfg["model"]["decoder_path"]))
-
+        if cfg["model"]["load_classifier"]:
+            classifier_path = cfg["model"]["classifier_path"]
+            self.classifier = torch.load(classifier_path).to(self.device)
+            
+        
     def train(self, dataloader, val_dataset, metrics=None):
 
         ##tensorboard summary writer
@@ -102,28 +109,28 @@ class finetune_sam():
             
             # ###eval结果并save model
             result = self.val(val_dataset, metrics=metrics)
-            dice_val, loss_val, mask_loss_val, iou_loss_val, iou_val = result
+            dice_val, loss_val, iou_val = result
             if self.use_tensorboard:
                 writer.add_scalar('loss/val', loss_val, epoch)
-                writer.add_scalar('loss/mask_loss_val', mask_loss_val, epoch)
-                writer.add_scalar('loss/iou_val', iou_loss_val, epoch)
                 writer.add_scalar('dice/val', dice_val, epoch)
                 writer.add_scalar('iou/val', iou_val, epoch)
 
             ###save model
             if epoch > 0:
-                torch.save(self.sam_model.mask_decoder.state_dict(), self.log_dir + '/' + '{}.pth'.format(epoch))
-
+                torch.save(self.sam_model.mask_decoder.state_dict(), self.checkpoints_dir + '/' + 'mask_decoder_epoch{}.pth'.format(epoch))
+                torch.save(self.classifier.state_dict(), self.checkpoints_dir + '/' + '{}_epoch_{}.pth'.format(self.classifier_type, epoch))
+                
             ###eval end###
             
             pbar = tqdm(dataloader, ncols=90, desc="iter", position=0)
-            for img, gt_mask, promt, promt_label, promt_type in pbar:
+            for img, image_embedding, gt_mask, promt, promt_label, promt_type, category, data_merge in pbar:
 
                 #chanve device
-                img = img.to(self.device)
                 gt_mask = gt_mask.to(self.device).unsqueeze(1).float()
                 promt = promt.to(self.device)
-
+                category = img.to(self.device)
+                data_merge = data_merge.to(self.device)
+                
                 if torch.is_tensor(promt_label):
                     promt_label = promt_label.to(self.device)
                 elif promt_label[0] != -1:
@@ -132,10 +139,11 @@ class finetune_sam():
                 with torch.no_grad():
                     
                     if self.use_embedded:
-                        image_embedding = img
+                        image_embedding = image_embedding.to(self.device)
                     else:
                         ####TODO####
                         #把最长边resize成1024, 短边padding
+                        img = img.to(self.device)
                         img = img.unsqueeze(1) #batch * 1 * input_size * input_size
                         img = self.transform.apply_image_torch(img.float())
 
@@ -154,7 +162,7 @@ class finetune_sam():
                         boxes = promt * (self.input_size[0] / self.original_image_size[0])
                     elif promt_type == 'mask':
                         masks = promt
-                    elif promt_type == 'points' or promt_type == 'single_point' or promt_type == "grid_points":
+                    elif promt_type == 'points' or promt_type == 'single_point':
                         points = promt * (self.input_size[0] / self.original_image_size[0]), promt_label
                     else:
                         raise NotImplementedError
@@ -181,28 +189,26 @@ class finetune_sam():
                 upscaled_masks = self.sam_model.postprocess_masks(low_res_masks, self.input_size, self.original_image_size).to(self.device)
                 binary_mask = normalize(threshold(upscaled_masks, 0.0, 0)).to(self.device)
 
+                # classification
+                category_result = self.classifier(data_merge, promt)
+                classifier_loss = self.lambda_classifier*self.classifier_loss_fn(category_result, category)
+                
                 ###计算loss, update
                 # pdb.set_trace()
-                
                 if self.loss == 'MSE':
-                    mask_loss = self.loss_fn(binary_mask, gt_mask)
+                    loss = self.loss_fn(binary_mask, gt_mask)
                 else:
-                    mask_loss = self.loss_fn(upscaled_masks, gt_mask)
-                
-                #iou and iou loss 
-                iou = torch.sum(binary_mask * gt_mask, dim=[-1, -2]) / torch.sum(gt_mask, dim=[-1, -2])
-                iou_loss = self.iou_loss_fn(iou_predictions, iou) 
-                
-                loss = mask_loss + iou_loss * self.cfg["train"]["iou_scale"]
-
+                    loss = self.loss_fn(upscaled_masks, gt_mask)
+                loss = loss + classifier_loss
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
 
                 if self.linear_warmup and n_iter < self.cfg["train"]["warmup_iter"]:
-                    self.warmup_scheduler.step()
-                elif self.lr_decay:
-                    self.decay_schedular.step()
+                    self.scheduler.step()
+
+                #iou 
+                iou = (binary_mask * gt_mask).sum() / gt_mask.sum()
 
                 #dice_coef
                 dice_coef = (2 * torch.sum((binary_mask * gt_mask), dim=[-1, -2]) / (torch.sum(binary_mask, dim=[-2, -1]) + torch.sum(gt_mask, dim=[-2, -1]))).mean() 
@@ -214,28 +220,26 @@ class finetune_sam():
                 n_iter += 1
                 if self.use_tensorboard:
                     writer.add_scalar('loss/train', loss.cpu(), n_iter)
-                    writer.add_scalar('loss/train_mask_loss', mask_loss.cpu(), n_iter)
-                    writer.add_scalar('loss/train_iou_loss', iou_loss.cpu(), n_iter)
+                    writer.add_scalar('loss/train_classifier', classifier_loss.cpu(), n_iter)
                     writer.add_scalar('train/lr', self.optimizer.param_groups[0]['lr'] , n_iter)
-                    writer.add_scalar('iou/train', iou.mean().cpu(), n_iter) 
+                    writer.add_scalar('iou/train', iou.cpu(), n_iter) #因为只设置了一个mask, 所以直接取0
                     writer.add_scalar('dice/train', dice_coef.cpu(), n_iter) #因为只设置了一个mask, 所以直接取0
 
 
     def val(self, dataset, metrics=None):
 
         self.sam_model.eval()
+        self.classifier.eval()
 
         ###调用task1中的val函数
         loss_all = []
-        iou_loss_all = []
-        mask_loss_all = []
         iou_all = []
         mask_all = np.zeros([len(dataset), self.original_image_size[0], self.original_image_size[1]], dtype=np.int8)
 
         pbar = tqdm(range(len(dataset)), ncols=90, desc="eval", position=0)
         for i in pbar:
 
-            img, gt_mask, promt, promt_label, promt_type = dataset[i]
+            img, image_embedding, gt_mask, promt, promt_label, promt_type, category, data_merge = dataset[i]
 
             ###change format and device
             img = torch.from_numpy(img).to(self.device).unsqueeze(0).float()
@@ -254,7 +258,7 @@ class finetune_sam():
             with torch.no_grad():
                 
                 if self.use_embedded:
-                    image_embedding = img
+                    image_embedding = image_embedding.to(self.device)
                 else:
                     img = img.unsqueeze(1)
                     input_img = self.transform.apply_image_torch(img)#把最长边resize成1024, 短边padding
@@ -272,7 +276,7 @@ class finetune_sam():
                     boxes = promt * (self.input_size[0] / self.original_image_size[0])
                 elif promt_type == 'mask':
                     masks = promt
-                elif promt_type == 'points' or promt_type == 'single_point' or promt_type == "grid_points":
+                elif promt_type == 'points' or promt_type == 'single_point':
                     points = promt * (self.input_size[0] / self.original_image_size[0]), promt_label
                 else:
                     raise NotImplementedError                    
@@ -296,38 +300,35 @@ class finetune_sam():
                 upscaled_masks = self.sam_model.postprocess_masks(low_res_masks, self.input_size, self.original_image_size).to(self.device)
                 binary_mask = normalize(threshold(upscaled_masks, 0.0, 0)).to(self.device).squeeze() #低于0的扔掉, 高于0normalize到1
 
-                #loss
+                # classification
+                category_result = self.classifier(data_merge, promt)
+
+                #loss                
                 if self.loss == 'MSE':
-                    mask_loss = self.loss_fn(binary_mask, gt_mask)
+                    loss = self.loss_fn(binary_mask, gt_mask)
                 else:
-                    mask_loss = self.loss_fn(upscaled_masks, gt_mask)
-                
-                #iou and iou loss 
-                iou = torch.sum(binary_mask * gt_mask, dim=[-1, -2]) / torch.sum(gt_mask, dim=[-1, -2])
-                iou_loss = self.iou_loss_fn(iou_predictions, iou) 
-                
-                loss = mask_loss + iou_loss * self.cfg["train"]["iou_scale"]
+                    loss = self.loss_fn(upscaled_masks, gt_mask)
+                loss = loss + self.lambda_classifier*self.classifier_loss_fn(category_result, category)
+                    
+                ###iou
+                iou = (binary_mask * gt_mask).sum() / gt_mask.sum()
                 
                 ###汇总
                 loss_all.append(loss.cpu().item())
-                mask_loss_all.append(mask_loss.cpu().item())
-                iou_loss_all.append(iou_loss.cpu().item())
-                iou_all.append(iou.mean().cpu().item())
+                iou_all.append(iou.cpu().item())
                 mask_all[i] = (binary_mask.cpu())
 
 
         loss_all = np.array(loss_all).mean() 
-        iou_loss_all = np.array(iou_loss_all).mean()
-        mask_loss_all = np.array(mask_loss_all).mean()  
         # pdb.set_trace()
         iou_all = np.array(iou_all).mean()
         mDice = metrics.eval_data_processing(6, mask_all)
         print("val mDice:", np.array(mDice).mean())
-        print("val loss:", loss_all)
-        print("val iou:", iou_all)
-        self.sam_model.train()
 
-        return np.array(mDice).mean(), loss_all, mask_loss_all, iou_loss_all, iou_all
+        self.sam_model.train()
+        self.classifier.train()
+
+        return np.array(mDice).mean(), loss_all, iou_all
 
     def test(self, dataset, metrics=None):
 
@@ -377,7 +378,7 @@ class finetune_sam():
                     boxes = promt * (self.input_size[0] / self.original_image_size[0])
                 elif promt_type == 'mask':
                     masks = promt
-                elif promt_type == 'points' or promt_type == 'single_point' or promt_type == "grid_points":
+                elif promt_type == 'points' or promt_type == 'single_point':
                     points = promt * (self.input_size[0] / self.original_image_size[0]), promt_label
                 else:
                     raise NotImplementedError                    

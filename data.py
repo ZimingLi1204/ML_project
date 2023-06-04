@@ -34,7 +34,7 @@ def embedding_single_img(img, transform, sam_model, device):
 
 class Mydataset(Dataset):
 
-    def __init__(self, mode: np.array, img : np.array , mask: np.array, name: list, slice_id: list, category: list, promt_type="single_point", load_from_disk=False, center_point=True, point_num=8, point_size=16):
+    def __init__(self, mode: np.array, img : np.array, img_emb, mask: np.array, name: list, slice_id: list, category: list, promt_type="single_point", load_from_disk=False, center_point=True, point_num=8, point_size=16):
         '''
         mode: train/val/test
         data: N * 512 * 512.
@@ -44,7 +44,8 @@ class Mydataset(Dataset):
         category: 每个mask对应的类别 范围为1-13     N * 1
         '''
         self.mode = mode
-        self.img = img
+        self.img = img.astype(np.float32)
+        self.img_emb = img_emb
         self.mask = mask
         self.name = name
         self.slice_id = slice_id
@@ -64,15 +65,21 @@ class Mydataset(Dataset):
         # print(index)
 
         img = self.img[index]
+        # img_emb = None
+        if self.img_emb is not None:
+            img = self.img_emb[index]
         # if self.load_from_disk:
         #     img = img.copy()
         promt, promt_label = None, np.array(-1)
         promt_type = self.promt_type
 
         mask = self.mask[index]
-        promt = get_promt(img, mask, promt_type, point_num = self.point_num, center_point=self.center_point, point_size=self.point_size)
+        
+        promt = get_promt(mask, promt_type, point_num = self.point_num, center_point=self.center_point, point_size=self.point_size)
+
         if isinstance(promt, tuple):
             promt, promt_label = promt
+        # pdb.set_trace()
         return img, mask, promt, promt_label, promt_type
         
 
@@ -105,6 +112,8 @@ def load_train_data_from_dir(data_train_path, data_val_path, info_train_path, in
     val_data = np.load(info_val_path+'.npz')
     load_from_disk = cfg["data"]["load_from_disk"]
 
+    train_embedded_data, val_embedded_data = None, None
+
     if use_embedded:
         if load_from_disk:
             train_embedded_data = np.load(data_train_path+'.npy', mmap_mode='r')
@@ -118,13 +127,15 @@ def load_train_data_from_dir(data_train_path, data_val_path, info_train_path, in
     train_info = scio.loadmat(info_train_path+'.mat')
     val_info = scio.loadmat(info_val_path+'.mat')
 
-    if use_embedded:
-        img_train = train_embedded_data
-        img_val = val_embedded_data
-    else:
-        img_train = train_data["img"]
-        img_val = val_data["img"]
-
+    # if use_embedded:
+    #     img_train = train_embedded_data
+    #     img_val = val_embedded_data
+    # else:
+    #     img_train = train_data["img"]
+    #     img_val = val_data["img"]
+    
+    img_train = train_data["img"]
+    img_val = val_data["img"]
     mask_train = train_data["mask"]
     mask_val = val_data["mask"]
     name_train = train_info["name"]
@@ -134,7 +145,7 @@ def load_train_data_from_dir(data_train_path, data_val_path, info_train_path, in
     category_train = train_info["category"]
     category_val = val_info["category"]
    
-    mydataset_train = Mydataset(mode='train',img=img_train, 
+    mydataset_train = Mydataset(mode='train',img=img_train, img_emb=train_embedded_data, 
                                 mask=mask_train, name=name_train, slice_id=slice_id_train, 
                                 category=category_train, load_from_disk=load_from_disk,     
                                 promt_type=cfg["promt"]["promt_type"],
@@ -142,7 +153,7 @@ def load_train_data_from_dir(data_train_path, data_val_path, info_train_path, in
                                 point_num = cfg["promt"]["point_num"],
                                 point_size = cfg["promt"]["point_size"])
     
-    mydataset_val = Mydataset(mode='train', img=img_val,
+    mydataset_val = Mydataset(mode='train', img=img_val,img_emb=val_embedded_data,
                             mask=mask_val, name=name_val, slice_id=slice_id_val, 
                             category=category_val, load_from_disk=load_from_disk, 
                             promt_type=cfg["promt"]["promt_type"],

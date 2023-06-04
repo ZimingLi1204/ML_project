@@ -7,6 +7,7 @@ device_id: 1
 train:
   use_tensorboard: True
   log_dir: 'log'
+  checkpoints_dir: "checkpoints"
   group: 'debug'
   save_name: 'debug'
   learning_rate: 1.e-4
@@ -25,7 +26,11 @@ test:
 model:
   model_root: ../pretrain_model
   model_type: vit_h
-
+  load_decoder: True
+  decoder_path: ../finetune_model/box_8605.pth
+  load_classifier: False
+  classifier_path: ../finetune_model/0.4_1x512x512_epoch49.pth
+  classifier_type: cnn
 
 data:
   data_root: "../BTCV_dataset1"
@@ -34,8 +39,13 @@ data:
   img_size: [512, 512]
   input_size: [1024, 1024]
   use_embedded: False
-  data_name: pre_processed_dataset1
+  data_name: vit-h_embedding_bc1
   info_name: pre_processed_dataset1
   load_from_disk: False
 
      
+promt:
+  promt_type: "box"
+  center_point: False
+  point_num: 16
+  point_size: 16
