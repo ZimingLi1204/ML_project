@@ -2,7 +2,7 @@ from model import sam_classifier
 import yaml
 # from config import process_cfg, parse_args
 from utils.utils import set_seed
-from data import load_data_train, load_data_test
+from data import load_data_train, load_data_test, classifier_load_data_train
 from torch.utils.data import DataLoader
 from utils.metrics import Dice
 from time import sleep
@@ -48,13 +48,13 @@ if __name__ == '__main__':
         metrics = Dice(mask_gt=test_dataset.mask, info_gt=info)
     else:
         print("#####Loading train data#######")
-        train_dataset, val_dataset = load_data_train(cfg)
-        train_dataloader = DataLoader(train_dataset, batch_size=cfg['train']['batch_size'], shuffle=True, num_workers=4)
+        train_dataset, val_dataset = classifier_load_data_train(cfg)
+        train_dataloader = DataLoader(train_dataset, batch_size=cfg['train']['batch_size'], shuffle=True, num_workers=0)
         # val_dataloader = DataLoader(val_dataset, batch_size=cfg['test']['batch_size'], shuffle=False, num_workers=4)
         info = {"name": val_dataset.name, "category": val_dataset.category}
         metrics = Dice(mask_gt=val_dataset.mask, info_gt=info)
 
-    print("#######Finishi Loading########")
+    print("#######Finish Loading########")
 
     if cfg["test"]["test"]:
         algo.test(test_dataset, metrics=metrics)
