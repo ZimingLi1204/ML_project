@@ -98,6 +98,9 @@ class ClassifierDataset(Mydataset):
         super().__init__(mode, img, img_emb, mask, name, slice_id, category, promt_type, load_from_disk, center_point, point_num, point_size)
         
         self.img = self.img / 255
+        print(self.img.shape, self.mask.shape)
+        assert self.mask.shape == self.img.shape
+        
         self.data_merge = np.concatenate([self.mask.reshape(-1, 1, 512, 512), self.img.reshape(-1, 1, 512, 512)], axis=1)
         self.data_merge = self.data_merge.reshape(-1, 2, 512, 512)
         
@@ -163,6 +166,15 @@ def load_data_test(cfg):
     info_test_path = os.path.join(cfg['data']['data_root'],  cfg["data"]["info_name"] + '_' + "test")
    
     test_dataset = load_test_data_from_dir(data_test_path, info_test_path, cfg, use_embedded=cfg['data']['use_embedded'])
+
+    return test_dataset
+
+def classifier_load_data_test(cfg):
+
+    data_test_path = os.path.join(cfg['data']['data_root'],  cfg["data"]["data_name"] + '_' + "test")
+    info_test_path = os.path.join(cfg['data']['data_root'],  cfg["data"]["info_name"] + '_' + "test")
+   
+    test_dataset = classifier_load_test_data_from_dir(data_test_path, info_test_path, cfg, use_embedded=cfg['data']['use_embedded'])
 
     return test_dataset
 
@@ -326,7 +338,52 @@ def load_test_data_from_dir(data_test_path, info_test_path, cfg=None, use_embedd
                                 )
 
 
+
     return mydataset_test
+
+def classifier_load_test_data_from_dir(data_test_path, info_test_path, cfg=None, use_embedded=False) -> Mydataset:
+    #根据路径提取并处理数据, 生成测试集, 有label
+
+    print("loading test img & mask from {}".format(data_test_path))
+    test_data = np.load(info_test_path + '.npz')
+    load_from_disk = cfg["data"]["load_from_disk"]
+
+    test_embedded_data = None
+    
+    if use_embedded:
+        if load_from_disk:
+            test_embedded_data = np.load(data_test_path+'.npy', mmap_mode='r')
+        else:
+            test_embedded_data = np.load(data_test_path+'.npy')
+
+    print("loading test name & slice_id & category from {}".format(info_test_path))
+    test_info = scio.loadmat(info_test_path + '.mat')
+
+    # device = "cuda:1"
+    # sam_checkpoint = "../pretrain_model/sam_vit_h.pth"
+    # sam_model = sam_model_registry['vit_h'](checkpoint=sam_checkpoint).to(device)
+    # transform = ResizeLongestSide(test_data["img"].shape[-1])
+    # pdb.set_trace()
+
+    img_test = test_data["img"]
+    mask_test = test_data["mask"]
+    name_test = test_info["name"]
+    slice_id_test = test_info["slice_id"]
+    category_test = test_info["category"]
+
+    mydataset_test = ClassifierDataset(mode='test', img=img_test, img_emb=test_embedded_data, 
+                               mask=mask_test, name=name_test, slice_id=slice_id_test,
+                                category=category_test, load_from_disk=load_from_disk, 
+                                promt_type=cfg["promt"]["promt_type"],
+                                center_point=cfg["promt"]["center_point"],
+                                point_num = cfg["promt"]["point_num"],
+                                point_size = cfg["promt"]["point_size"],
+                                )
+
+
+
+    return mydataset_test
+
 
 def save_embedded_data():
     
