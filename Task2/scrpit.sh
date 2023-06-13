@@ -42,11 +42,11 @@ python main.py --group_name finetune_grid_points --save_name bc16_wd1e-4_adamW_s
 ###test
 python main.py --group_name debug --save_name test_promt \
 --use_embedded --promt_type box --center_point \
---gpu_id 0 --test --data_root /BTCV_testset --model_root /pretrain_model \
+--gpu_id 0 --test --data_root /BTCV_testset --model_root /pretrain_model 
 
 python main.py --group_name debug --save_name test_dice \
 --use_embedded --promt_type box \
---gpu_id 0 --test --data_root /BTCV_testset --model_root /pretrain_model \
+--gpu_id 0 --test --data_root /BTCV_testset --model_root /pretrain_model 
 
 python main.py --group_name debug --save_name debug \
 --batch_size 2 --weight_decay 0 --use_embedded \

@@ -21,13 +21,13 @@ def dice_coefficient(y_true, y_pred):
     #     dsc = 0
     # # Compute the Dice coefficient
     # else :
-    idx = (y_true_f.sum(axis=(-1, -2)) != 0)
+    # idx = (y_true_f.sum(axis=(-1, -2)) != 0)
 
-    intersection = intersection[idx]
-    y_pred_f = y_pred_f[idx]
-    y_true_f = y_true_f[idx]
+    # intersection = intersection[idx]
+    # y_pred_f = y_pred_f[idx]
+    # y_true_f = y_true_f[idx]
 
-    dsc = (2. * intersection.sum(axis=(-1, -2))) / (y_true_f.sum(axis=(-1, -2)) + y_pred_f.sum(axis=(-1, -2)) + 1e-12)
+    dsc = (2. * intersection.sum()) / (y_true_f.sum() + y_pred_f.sum() + 1e-12)
 
     # try:
     #     if(dsc.min() == 0):
@@ -92,10 +92,10 @@ class Dice():
             case_num: 35-40 CT 
             gen_mask: N * 512 * 512
         '''
-        sumdice = float(0)
+        # sumdice = float(0)
         #print(cate.shape)
         mdice = [0] * 13
-        organ_num = 0
+        # organ_num = 0
         cate_CT = self.cate[self.listp[case_num]:self.listp[case_num+1]]
         gen_mask_CT = gen_mask[self.listp[case_num]:self.listp[case_num+1], :, :]
         gt_mask_CT = self.mask_groundtruth[self.listp[case_num]:self.listp[case_num+1], :, :]
@@ -117,7 +117,7 @@ class Dice():
             # pdb.set_trace()
             #assert gen_mask_cate.shape[0] == gt_mask_cate.shape[0] == len(location_list)
             if (gt_mask_cate.shape[0] != 0):
-                organ_num += 1
+                # organ_num += 1
                 dice = dice_coefficient(gt_mask_cate, gen_mask_cate)
                 if self.verbose:
                     print("Organ:", i, "Dice:", dice)
@@ -143,11 +143,10 @@ class Dice():
                 m_Dice[j].append(d)
         
         # pdb.set_trace()
-
-        for i, d in enumerate(m_Dice):
-            m_Dice[i] = np.hstack(d).mean()
+        
+        m_Dice = np.array(m_Dice).sum(axis=1) / (np.array(m_Dice) != 0).sum(axis=1)
 
         # print("Total mDice:", m_Dice)
-        return m_Dice
+        return list(m_Dice)
         #六个CT对应的m_Dice数据   
 
