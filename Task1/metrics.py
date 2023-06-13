@@ -96,7 +96,7 @@ class Dice():
         #寻找每一个CT对应的编号
         print("list_p:", self.listp)
         m_Dice = [0] * iter
-        for i in range (iter):
+        for i in range(iter):
             print("CT", i + 1, "_______________________________")
             m_Dice[i] = self.eval_mdice(i, gen_mask)
         print("Total mDice:", m_Dice)

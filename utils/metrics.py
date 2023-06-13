@@ -60,18 +60,21 @@ class Dice():
         self.cate = self.cate[0, :]
         self.CT_idx = np.int32(info["name"])
         self.CT_idx = self.CT_idx.reshape(-1)
-        self.listp = [0] * 30
+        self.listp = [0]
         print("data loaded")
         # pdb.set_trace()
 
     def find_pointer(self):
-        j = 1
-        i = 0
+        # j = 1
+        # i = 0
         for i in range (self.CT_idx.shape[0] - 1):
             if self.CT_idx[i] + 1 == self.CT_idx[i + 1]:
-                self.listp[j] = i
-                j += 1
-        self.listp[j] = i + 1
+                self.listp.append(i+1)
+                # j += 1
+        # self.listp[j] = i + 1
+        print(i+1)
+        print(self.CT_idx.shape[0])
+        self.listp.append(i+1)
 
     # 35 - 40 CT
     def eval_mdice(self, case_num, gen_mask):
@@ -123,3 +126,6 @@ class Dice():
         # print("Total mDice:", m_Dice)
         return m_Dice
         #六个CT对应的m_Dice数据   
+
+if __name__ == "__main__":
+

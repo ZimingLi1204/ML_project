@@ -9,7 +9,7 @@ import data as DT
 import cv2
 import numpy as np
 import os
-import metrics
+import utils.metrics as metrics
 import pdb
 from tqdm.auto import tqdm
 

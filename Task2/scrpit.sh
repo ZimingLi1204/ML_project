@@ -37,7 +37,7 @@ python main.py --group_name finetune_grid_points --save_name bc16_wd1e-4_adamW_s
 --batch_size 16  --weight_decay 1.e-4 --optimizer AdamW --promt_type grid_points \
 --use_embedded --weight_list 1 1 --loss sam_loss --lr_schedular StepLR --step_size 2000 --linear_warmup \
 --iou_scale 0.05 --point_num 16 \
---gpu_id 0
+--gpu_id 0 --model_root /pretrain_model \
 
 ###test
 python main.py --group_name debug --save_name test_promt \
