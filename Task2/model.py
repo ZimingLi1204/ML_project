@@ -174,7 +174,7 @@ class finetune_sam():
                     image_pe=self.sam_model.prompt_encoder.get_dense_pe(),
                     sparse_prompt_embeddings=sparse_embeddings,
                     dense_prompt_embeddings=dense_embeddings,
-                    multimask_output=False,
+                    multimask_output=True,
                 )
 
                 #mask
@@ -183,14 +183,19 @@ class finetune_sam():
 
                 ###计算loss, update
                 # pdb.set_trace()
+                # iou = torch.sum(binary_mask * gt_mask.unsqueeze(1), dim=(-1, -2))
+                # _, max_idx = torch.max(iou, dim=1)
+                # binary_mask = 
                 
                 if self.loss == 'MSE':
                     mask_loss = self.loss_fn(binary_mask, gt_mask)
                 else:
                     mask_loss = self.loss_fn(upscaled_masks, gt_mask)
                 
+                mask_loss, _ = torch.max(mask_loss, dim=1)
+
                 #iou and iou loss 
-                iou = torch.sum(binary_mask * gt_mask, dim=[-1, -2]) / torch.sum(gt_mask, dim=[-1, -2])
+                iou = torch.sum(binary_mask * gt_mask.unsqueeze(1), dim=[-1, -2]) / torch.sum(gt_mask.unsqueeze(1), dim=[-1, -2])
                 iou_loss = self.iou_loss_fn(iou_predictions, iou) 
                 
                 loss = mask_loss + iou_loss * self.cfg["train"]["iou_scale"]
