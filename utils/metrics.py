@@ -10,18 +10,30 @@ Adjust the Filepath to the reference set HERE!!!!!!
 
 def dice_coefficient(y_true, y_pred):
     # Flatten the arrays
-    np.seterr(divide='ignore',invalid='ignore')
+    # np.seterr(divide='ignore',invalid='ignore')
     y_true_f = np.asarray(y_true).astype(np.int32)
     y_pred_f = np.asarray(y_pred).astype(np.int32)
     # print(y_pred_f.shape, y_true_f.shape)
     # Compute the intersection
     intersection = np.logical_and(y_true_f, y_pred_f)
     #y_pred_f = np.logical_and(y_pred_f, y_pred_f)
-    if intersection.sum() == 0:
-        dsc = 0
-    # Compute the Dice coefficient
-    else :
-        dsc = (2. * intersection.sum()) / (y_true_f.sum() + y_pred_f.sum())
+    # if intersection.sum() == 0:
+    #     dsc = 0
+    # # Compute the Dice coefficient
+    # else :
+    idx = (y_true_f.sum(axis=(-1, -2)) != 0)
+
+    intersection = intersection[idx]
+    y_pred_f = y_pred_f[idx]
+    y_true_f = y_true_f[idx]
+
+    dsc = (2. * intersection.sum(axis=(-1, -2))) / (y_true_f.sum(axis=(-1, -2)) + y_pred_f.sum(axis=(-1, -2)) + 1e-12)
+
+    # try:
+    #     if(dsc.min() == 0):
+    #         pdb.set_trace()
+    # except:
+    #     pdb.set_trace()
         #print(intersection.sum())
         #print(y_true_f.sum(), y_pred_f.sum())
     
@@ -63,6 +75,7 @@ class Dice():
         self.listp = [0]
         print("data loaded")
         # pdb.set_trace()
+        self.find_pointer()
 
     def find_pointer(self):
         # j = 1
@@ -70,11 +83,8 @@ class Dice():
         for i in range (self.CT_idx.shape[0] - 1):
             if self.CT_idx[i] + 1 == self.CT_idx[i + 1]:
                 self.listp.append(i+1)
-                # j += 1
-        # self.listp[j] = i + 1
-        print(i+1)
-        print(self.CT_idx.shape[0])
-        self.listp.append(i+1)
+        self.listp.append(self.CT_idx.shape[0])
+        # pdb.set_trace()
 
     # 35 - 40 CT
     def eval_mdice(self, case_num, gen_mask):
@@ -84,17 +94,22 @@ class Dice():
         '''
         sumdice = float(0)
         #print(cate.shape)
+        mdice = [0] * 13
         organ_num = 0
+        cate_CT = self.cate[self.listp[case_num]:self.listp[case_num+1]]
+        gen_mask_CT = gen_mask[self.listp[case_num]:self.listp[case_num+1], :, :]
+        gt_mask_CT = self.mask_groundtruth[self.listp[case_num]:self.listp[case_num+1], :, :]
+
         for i in range (1, 14):
-            cate_CT = self.cate[self.listp[case_num]:self.listp[case_num+1]]
-            gen_mask_CT = gen_mask[self.listp[case_num]:self.listp[case_num+1], :, :]
-            gt_mask_CT = self.mask_groundtruth[self.listp[case_num]:self.listp[case_num+1], :, :]
             #print(cate_CT.shape)
             #breakpoint()
-            location_list = []
-            for j, k in enumerate(cate_CT):
-                if k == i:
-                    location_list.append(j)
+            # location_list = []
+            # for j, k in enumerate(cate_CT):
+            #     if k == i:
+            #         location_list.append(j)
+            # pdb.set_trace()
+            location_list = np.where(cate_CT == i)
+            
             #print(location_list)
             # breakpoint()
             gt_mask_cate = gt_mask_CT[location_list, :, :]
@@ -106,26 +121,33 @@ class Dice():
                 dice = dice_coefficient(gt_mask_cate, gen_mask_cate)
                 if self.verbose:
                     print("Organ:", i, "Dice:", dice)
-                sumdice += dice
+                # sumdice += dice
+                mdice[i-1] = dice
 
-        mdice = sumdice / organ_num
         if self.verbose:
             print("mDice", mdice)
+        # pdb.set_trace()
         return mdice
 
     def eval_data_processing(self, iter, gen_mask):
-        self.find_pointer()
         #寻找每一个CT对应的编号
         if self.verbose:
             print("list_p:", self.listp)
-        m_Dice = [0] * iter
+        m_Dice = [[] for i in range(13)]
         for i in range (iter):
             if self.verbose:
                 print("CT", i + 1, "_______________________________")
-            m_Dice[i] = self.eval_mdice(i, gen_mask)
+            m_Dice_new = self.eval_mdice(i, gen_mask)
+            # pdb.set_trace()
+            for j, d in enumerate(m_Dice_new):
+                m_Dice[j].append(d)
+        
+        # pdb.set_trace()
+
+        for i, d in enumerate(m_Dice):
+            m_Dice[i] = np.hstack(d).mean()
+
         # print("Total mDice:", m_Dice)
         return m_Dice
         #六个CT对应的m_Dice数据   
-
-if __name__ == "__main__":
 

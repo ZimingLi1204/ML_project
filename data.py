@@ -195,7 +195,7 @@ def load_test_data_from_dir(data_test_path, info_test_path, cfg=None, use_embedd
     slice_id_test = test_info["slice_id"]
     category_test = test_info["category"]
 
-    mydataset_test = Mydataset(mode='test', img=img_test, 
+    mydataset_test = Mydataset(mode='test', img=img_test, img_emb=test_embedded_data,
                                mask=mask_test, name=name_test, slice_id=slice_id_test,
                                 category=category_test, load_from_disk=load_from_disk, 
                                 promt_type=cfg["promt"]["promt_type"],

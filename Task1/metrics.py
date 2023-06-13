@@ -21,6 +21,7 @@ def dice_coefficient(y_true, y_pred):
             dsc = 0
         # Compute the Dice coefficient
         else :
+            
             dsc = (2. * intersection.sum()) / (y_true_f.sum() + y_pred_f.sum())
             #print(intersection.sum())
             #print(y_true_f.sum(), y_pred_f.sum())
