@@ -183,51 +183,6 @@ class finetune_sam():
                 binary_mask = normalize(threshold(upscaled_masks, 0.0, 0)).to(self.device)
 
                 ###计算loss, update
-                # pdb.set_trace()
-                # iou = torch.sum(binary_mask * gt_mask.unsqueeze(1), dim=(-1, -2))
-                # _, max_idx = torch.max(iou, dim=1)
-                # binary_mask = 
-                # pdb.set_trace()
-                # if self.multimask is not None :
-                #     mask_loss = torch.zeros(upscaled_masks.shape[0], device=self.device)
-                #     if self.loss == 'MSE':
-                        
-                #         for i in range(mask_loss.shape[0]):
-                #             mask_loss0 = self.loss_fn(binary_mask[i, 0].unsqueeze(0), gt_mask[i])
-                #             mask_loss1 = self.loss_fn(binary_mask[i, 1].unsqueeze(0), gt_mask[i])
-                #             mask_loss2 = self.loss_fn(binary_mask[i, 2].unsqueeze(0), gt_mask[i])
-                #             loss_i = torch.concat([mask_loss0, mask_loss1, mask_loss2])
-                #             if self.multimask == 'min':
-                #                 mask_loss[i], _ = torch.min(loss_i, dim=1)
-                #             elif self.multimask == 'max':
-                #                 mask_loss, _ = torch.max(loss_i, dim=1)
-                #             elif self.multimask == 'mean':
-                #                 mask_loss, _ = torch.mean(loss_i, dim=1)
-                #             else: 
-                #                 raise NotImplementedError
-                #     else:
-                #         # mask_loss = torch.zeros((upscaled_masks.shape[0]), device=self.device)
-                #         for i in range(mask_loss.shape[0]):
-                #             mask_loss0 = self.loss_fn(upscaled_masks[i, 0].unsqueeze(0), gt_mask[i])
-                #             mask_loss1 = self.loss_fn(upscaled_masks[i, 1].unsqueeze(0), gt_mask[i])
-                #             mask_loss2 = self.loss_fn(upscaled_masks[i, 2].unsqueeze(0), gt_mask[i])
-
-                #             loss_i = torch.concat([mask_loss0, mask_loss1, mask_loss2])
-
-                #             if self.multimask == 'min':
-                #                 mask_loss[i], _ = torch.min(loss_i, dim=1)
-                #             elif self.multimask == 'max':
-                #                 mask_loss, _ = torch.max(loss_i, dim=1)
-                #             elif self.multimask == 'mean':
-                #                 mask_loss, _ = torch.mean(loss_i, dim=1)
-                #             else: 
-                #                 raise NotImplementedError
-
-
-                #     # pdb.set_trace()
-
-                #     mask_loss = mask_loss.mean()
-                
                 if self.loss == 'MSE':
                     mask_loss = self.loss_fn(binary_mask, gt_mask, multimask=self.multimask)
                 else:
@@ -341,6 +296,8 @@ class finetune_sam():
                 #mask
                 upscaled_masks = self.sam_model.postprocess_masks(low_res_masks, self.input_size, self.original_image_size).to(self.device)
                 binary_mask = normalize(threshold(upscaled_masks, 0.0, 0)).to(self.device).squeeze() #低于0的扔掉, 高于0normalize到1
+
+                # pdb.set_trace()
 
                 #loss
                 if self.loss == 'MSE':

@@ -25,10 +25,10 @@ python main.py --group_name finetune_single_point --save_name bc32_wd1e-3_adamW_
 --iou_scale 0.05 --log_dir log --model_root /pretrain_model \
 --gpu_id 0
 
-python main.py --group_name finetune_points --save_name bc32_wd1e-3_adamW_samloss_1:1_lrdecay_iouloss0_8_8_multimask_max \
+python main.py --group_name finetune_points --save_name bc32_wd1e-3_adamW_samloss_2:1_lrdecay_iouloss0_8_8_multimask_mean \
 --batch_size 32  --weight_decay 1.e-3 --optimizer AdamW --promt_type points \
---use_embedded --weight_list 1 1 --loss sam_loss --lr_schedular StepLR \
---step_size 2000 --multimask max \
+--use_embedded --weight_list 2 1 --loss sam_loss --lr_schedular StepLR \
+--step_size 2000 --multimask mean \
 --iou_scale 0.05 --log_dir log --model_root /pretrain_model \
 --gpu_id 0
 
