@@ -76,52 +76,67 @@ class CNN(nn.Module):
         img_net.append(self.conv1)
         img_net.append(nn.BatchNorm2d(4))
         img_net.append(nn.ReLU())
-        img_net.append(nn.MaxPool2d(kernel_size=2, stride=2))
         
-        self.conv2 = nn.Conv2d(in_channels=4, out_channels=8, padding=1, kernel_size=3, stride=1)
+        self.conv2 = nn.Conv2d(in_channels=4, out_channels=8, padding=1, kernel_size=3, stride=2)
         nn.init.kaiming_normal_(self.conv2.weight)
         img_net.append(self.conv2)
         img_net.append(nn.BatchNorm2d(8))
         img_net.append(nn.ReLU())
-        img_net.append(nn.Dropout(p=0.2))
-        img_net.append(nn.MaxPool2d(kernel_size=2, stride=2))
-
-        self.conv3 = nn.Conv2d(in_channels=8, out_channels=8, padding=1, kernel_size=3, stride=1)
+        img_net.append(nn.Dropout(p=0.3))
+        
+        self.conv3 = nn.Conv2d(in_channels=8, out_channels=16, padding=1, kernel_size=3, stride=2)
         nn.init.kaiming_normal_(self.conv3.weight)
         img_net.append(self.conv3)
-        img_net.append(nn.BatchNorm2d(8))
-        img_net.append(nn.ReLU())
-        img_net.append(nn.Dropout(p=0.2))
-        img_net.append(nn.MaxPool2d(kernel_size=2, stride=2))
-
-        self.conv4 = nn.Conv2d(in_channels=8, out_channels=16, padding=1, kernel_size=3, stride=1)
-        nn.init.kaiming_normal_(self.conv4.weight)
-        img_net.append(self.conv4)
         img_net.append(nn.BatchNorm2d(16))
         img_net.append(nn.ReLU())
-        img_net.append(nn.Dropout(p=0.2))
-        img_net.append(nn.MaxPool2d(kernel_size=2, stride=2))
-
-        self.conv5 = nn.Conv2d(in_channels=16, out_channels=32, padding=1, kernel_size=3, stride=1)
+        
+        self.conv4 = nn.Conv2d(in_channels=16, out_channels=64, padding=1, kernel_size=3, stride=2)
+        nn.init.kaiming_normal_(self.conv4.weight)
+        img_net.append(self.conv4)
+        img_net.append(nn.BatchNorm2d(64))
+        img_net.append(nn.ReLU())
+        
+        self.conv5 = nn.Conv2d(in_channels=64, out_channels=128, padding=1, kernel_size=3, stride=2)
         nn.init.kaiming_normal_(self.conv5.weight)
         img_net.append(self.conv5)
-        img_net.append(nn.BatchNorm2d(32))
+        img_net.append(nn.BatchNorm2d(128))
         img_net.append(nn.ReLU())
-        img_net.append(nn.Dropout(p=0.2))
-        img_net.append(nn.MaxPool2d(kernel_size=2, stride=2))
         
-        self.fc1 = nn.Linear(in_features=32*16*16, out_features=128)
+        self.conv6 = nn.Conv2d(in_channels=128, out_channels=256, padding=1, kernel_size=3, stride=2)
+        nn.init.kaiming_normal_(self.conv6.weight)
+        img_net.append(self.conv6)
+        img_net.append(nn.BatchNorm2d(256))
+        img_net.append(nn.ReLU())
+        
+        self.conv7 = nn.Conv2d(in_channels=256, out_channels=512, padding=1, kernel_size=3, stride=1)
+        nn.init.kaiming_normal_(self.conv7.weight)
+        img_net.append(self.conv7)
+        img_net.append(nn.BatchNorm2d(512))
+        img_net.append(nn.ReLU())
+        img_net.append(nn.Dropout(p=0.3))
+        
+        self.conv8 = nn.Conv2d(in_channels=512, out_channels=1024, padding=1, kernel_size=3, stride=1)
+        nn.init.kaiming_normal_(self.conv8.weight)
+        img_net.append(self.conv8)
+        img_net.append(nn.BatchNorm2d(1024))
+        img_net.append(nn.ReLU())
+        
+        
+        
+        self.fc1 = nn.Linear(in_features=1024*8*8, out_features=16*8*8)
         nn.init.kaiming_normal_(self.fc1.weight)
-        img_net.append(nn.Dropout(p=0.5))
+        self.fc2 = nn.Linear(in_features=16*8*8, out_features=16)
+        nn.init.kaiming_normal_(self.fc2.weight)
         img_net.append(nn.Flatten())
         img_net.append(self.fc1)
+        img_net.append(self.fc2)
         self.img_net = nn.Sequential(*img_net)
         
         classifier = []
-        self.fc2 = nn.Linear(in_features=128, out_features=self.num_classes)
-        nn.init.kaiming_normal_(self.fc2.weight)
-        classifier.append(self.fc2)
-        # classifier.append(nn.Softmax())
+        self.fc3 = nn.Linear(in_features=20, out_features=self.num_classes)
+        nn.init.kaiming_normal_(self.fc3.weight)
+        classifier.append(self.fc3)
+        #classifier.append(nn.Softmax())
         self.classifier = nn.Sequential(*classifier)
         
         '''
@@ -210,7 +225,7 @@ if __name__ == "__main__":
     # print(cnn(d1, d2).shape)
     
     # summary(cnn, [(2, 512, 512), (4, )])
-    
+    print()    
 
     data_train_path = os.path.join(cfg['data']['data_root'], cfg["data"]["data_name"] + '_' + "train")
     data_val_path = os.path.join(cfg['data']['data_root'], cfg["data"]["data_name"] + '_' + "val")
@@ -248,8 +263,8 @@ if __name__ == "__main__":
 
 
 
-    optimizer = torch.optim.Adam(cnn.parameters(), lr=cfg["train"]["learning_rate"], weight_decay=1e-3)
-    loss_fn = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(cnn.parameters(), lr=cfg["train"]["learning_rate"])
+    loss_fn = nn.CrossEntropyLoss().to(device)
 
     writer = SummaryWriter(log_dir=cfg['train']['log_dir'])
     n_iter = 0
@@ -277,6 +292,9 @@ if __name__ == "__main__":
             
             optimizer.zero_grad()
             output = cnn(data_merge, promt)
+            # print(output)
+            # print(category.shape)
+            # breakpoint()
             loss = loss_fn(output, category)
             loss.backward()
             optimizer.step()

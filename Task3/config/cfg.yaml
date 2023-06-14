@@ -2,21 +2,26 @@ random_seed: 9999
 debug: False
 # use_wandb: False
 device: cuda
-device_id: 1
+device_id: 0
 
 train:
   use_tensorboard: True
-  log_dir: 'log'
+  log_dir: '/home/xuyichen/data/ML_project/Task3/log_together/try3'
   checkpoints_dir: "checkpoints"
   group: 'debug'
   save_name: 'debug'
   learning_rate: 1.e-4
+  linear_warmup: False
+  warmup_iter: 150
   optimizer: 'AdamW'
-  batch_size: 64
+  weight_decay: 1.e-3
+  batch_size: 16
   loss: 'MSE'
-  max_epoch: 50
+  max_epoch: 100
   use_checkpoint_asinit: False
-  checkpoint_id: 25
+  checkpoint_id: 46
+  lambda_classifier: 3
+  merge_type: 
   
 
 test:
@@ -29,7 +34,7 @@ model:
   load_decoder: True
   decoder_path: ../finetune_model/box_8605.pth
   load_classifier: False
-  classifier_path: ../finetune_model/0.4_1x512x512_epoch49.pth
+  classifier_path: ../finetune_model/mask_decoder_epoch42-0.7911.pth
   classifier_type: cnn
 
 data:
@@ -38,7 +43,7 @@ data:
   split_ratio: 0.2
   img_size: [512, 512]
   input_size: [1024, 1024]
-  use_embedded: False
+  use_embedded: True
   data_name: vit-h_embedding_bc1
   info_name: pre_processed_dataset1
   load_from_disk: False

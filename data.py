@@ -55,6 +55,19 @@ class Mydataset(Dataset):
         self.center_point=center_point
         self.point_num = point_num
         self.point_size = point_size
+        '''
+        Merge type: Multiply
+        '''
+        # self.data_merge = np.multiply(self.mask, self.img)
+        # self.data_merge = self.data_merge.reshape(-1, 1, 512, 512)
+        '''
+        Merge type: Concatenate
+        '''
+        # self.img = self.img / 255
+        # self.data_merge = np.concatenate([self.mask.reshape(-1, 1, 512, 512), self.img.reshape(-1, 1, 512, 512)], axis=1)
+        # self.data_merge = self.data_merge.reshape(-1, 2, 512, 512)
+        
+        
 
     def __len__(self):
         
@@ -65,9 +78,38 @@ class Mydataset(Dataset):
         # print(index)
 
         img = self.img[index]
-        # img_emb = None
+        img_emb = None
         if self.img_emb is not None:
             img = self.img_emb[index]
+        # if self.load_from_disk:
+        #     img = img.copy()
+        promt, promt_label = None, np.array(-1)
+        promt_type = self.promt_type
+
+        mask = self.mask[index]
+        promt = get_promt(img, mask, promt_type, point_num = self.point_num, center_point=self.center_point, point_size=self.point_size)
+        if isinstance(promt, tuple):
+            promt, promt_label = promt
+            
+        return img, mask, promt, promt_label, promt_type
+
+class ClassifierDataset(Mydataset):
+    def __init__(self, mode: np.array, img: np.array, img_emb, mask: np.array, name: list, slice_id: list, category: list, promt_type="single_point", load_from_disk=False, center_point=True, point_num=8, point_size=16):
+        super().__init__(mode, img, img_emb, mask, name, slice_id, category, promt_type, load_from_disk, center_point, point_num, point_size)
+        
+        self.img = self.img / 255
+        self.data_merge = np.concatenate([self.mask.reshape(-1, 1, 512, 512), self.img.reshape(-1, 1, 512, 512)], axis=1)
+        self.data_merge = self.data_merge.reshape(-1, 2, 512, 512)
+        
+        
+    def __len__(self):
+        return super().__len__()
+    
+    def __getitem__(self, index):
+        img = self.img[index]
+        img_emb = None
+        if self.img_emb is not None:
+            img_emb = self.img_emb[index]
         # if self.load_from_disk:
         #     img = img.copy()
         promt, promt_label = None, np.array(-1)
@@ -79,8 +121,17 @@ class Mydataset(Dataset):
 
         if isinstance(promt, tuple):
             promt, promt_label = promt
-        # pdb.set_trace()
-        return img, mask, promt, promt_label, promt_type
+            
+        # print("\nCATE", self.category.shape, type(self.category))
+        category = self.category[[0], index].astype(np.int64) - 1
+        
+        data_merge = self.data_merge[index]
+        
+        # print("CATE", category.shape)
+        # breakpoint()
+        return img, img_emb, mask, promt, promt_label, promt_type, category, data_merge
+
+    
         
 
 def load_data_train(cfg):
@@ -91,6 +142,17 @@ def load_data_train(cfg):
     info_val_path = os.path.join(cfg['data']['data_root'],  cfg["data"]["info_name"] + '_' + "val")
     
     train_dataset, val_dataset = load_train_data_from_dir(data_train_path, data_val_path, info_train_path, info_val_path, cfg, use_embedded=cfg['data']['use_embedded'])
+    
+    return train_dataset, val_dataset 
+
+def classifier_load_data_train(cfg):
+
+    data_train_path = os.path.join(cfg['data']['data_root'], cfg["data"]["data_name"] + '_' + "train")
+    data_val_path = os.path.join(cfg['data']['data_root'],  cfg["data"]["data_name"] + '_' + "val")
+    info_train_path = os.path.join(cfg['data']['data_root'], cfg["data"]["info_name"] + '_' + "train")
+    info_val_path = os.path.join(cfg['data']['data_root'],  cfg["data"]["info_name"] + '_' + "val")
+    
+    train_dataset, val_dataset = classifier_load_train_data_from_dir(data_train_path, data_val_path, info_train_path, info_val_path, cfg, use_embedded=cfg['data']['use_embedded'])
     
     return train_dataset, val_dataset 
     
@@ -154,6 +216,65 @@ def load_train_data_from_dir(data_train_path, data_val_path, info_train_path, in
                                 point_size = cfg["promt"]["point_size"])
     
     mydataset_val = Mydataset(mode='train', img=img_val,img_emb=val_embedded_data,
+                            mask=mask_val, name=name_val, slice_id=slice_id_val, 
+                            category=category_val, load_from_disk=load_from_disk, 
+                            promt_type=cfg["promt"]["promt_type"],
+                            center_point=cfg["promt"]["center_point"],
+                            point_num = cfg["promt"]["point_num"],
+                            point_size = cfg["promt"]["point_size"])
+
+    return mydataset_train, mydataset_val
+
+def classifier_load_train_data_from_dir(data_train_path, data_val_path, info_train_path, info_val_path, cfg=None, use_embedded=False):
+    #根据路径提取并处理数据, 划分训练/验证集. 这部分数据都是有label的
+
+    print("loading img & mask from {}".format(data_train_path))
+    train_data = np.load(info_train_path+'.npz')
+    val_data = np.load(info_val_path+'.npz')
+    load_from_disk = cfg["data"]["load_from_disk"]
+
+    train_embedded_data, val_embedded_data = None, None
+
+    if use_embedded:
+        if load_from_disk:
+            train_embedded_data = np.load(data_train_path+'.npy', mmap_mode='r')
+            val_embedded_data = np.load(data_val_path+'.npy', mmap_mode='r')
+        else:
+            #这里load data大约需要10分钟
+            train_embedded_data = np.load(data_train_path+'.npy')
+            val_embedded_data = np.load(data_val_path+'.npy')
+
+    print("loading name & slice_id & category from {}".format(info_train_path))
+    train_info = scio.loadmat(info_train_path+'.mat')
+    val_info = scio.loadmat(info_val_path+'.mat')
+
+    # if use_embedded:
+    #     img_train = train_embedded_data
+    #     img_val = val_embedded_data
+    # else:
+    #     img_train = train_data["img"]
+    #     img_val = val_data["img"]
+    
+    img_train = train_data["img"]
+    img_val = val_data["img"]
+    mask_train = train_data["mask"]
+    mask_val = val_data["mask"]
+    name_train = train_info["name"]
+    name_val = val_info["name"]
+    slice_id_train = train_info["slice_id"]
+    slice_id_val = val_info["slice_id"]
+    category_train = train_info["category"]
+    category_val = val_info["category"]
+   
+    mydataset_train = ClassifierDataset(mode='train',img=img_train, img_emb=train_embedded_data, 
+                                mask=mask_train, name=name_train, slice_id=slice_id_train, 
+                                category=category_train, load_from_disk=load_from_disk,     
+                                promt_type=cfg["promt"]["promt_type"],
+                                center_point=cfg["promt"]["center_point"],
+                                point_num = cfg["promt"]["point_num"],
+                                point_size = cfg["promt"]["point_size"])
+    
+    mydataset_val = ClassifierDataset(mode='train', img=img_val,img_emb=val_embedded_data,
                             mask=mask_val, name=name_val, slice_id=slice_id_val, 
                             category=category_val, load_from_disk=load_from_disk, 
                             promt_type=cfg["promt"]["promt_type"],
