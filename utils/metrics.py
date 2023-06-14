@@ -2,7 +2,8 @@
 import numpy as np
 import scipy.io as scio
 import pdb
-
+import torch
+import torchmetrics
 '''
 Before you use: 
 Adjust the Filepath to the reference set HERE!!!!!!
@@ -28,14 +29,6 @@ def dice_coefficient(y_true, y_pred):
     # y_true_f = y_true_f[idx]
 
     dsc = (2. * intersection.sum()) / (y_true_f.sum() + y_pred_f.sum() + 1e-12)
-
-    # try:
-    #     if(dsc.min() == 0):
-    #         pdb.set_trace()
-    # except:
-    #     pdb.set_trace()
-        #print(intersection.sum())
-        #print(y_true_f.sum(), y_pred_f.sum())
     
     return dsc
 
@@ -84,7 +77,6 @@ class Dice():
             if self.CT_idx[i] + 1 == self.CT_idx[i + 1]:
                 self.listp.append(i+1)
         self.listp.append(self.CT_idx.shape[0])
-        # pdb.set_trace()
 
     # 35 - 40 CT
     def eval_mdice(self, case_num, gen_mask):
@@ -118,7 +110,8 @@ class Dice():
             #assert gen_mask_cate.shape[0] == gt_mask_cate.shape[0] == len(location_list)
             if (gt_mask_cate.shape[0] != 0):
                 # organ_num += 1
-                dice = dice_coefficient(gt_mask_cate, gen_mask_cate)
+                dice = torchmetrics.functional.dice(gen_mask_cate, gt_mask_cate)
+                # dice = dice_coefficient(gt_mask_cate, gen_mask_cate)
                 if self.verbose:
                     print("Organ:", i, "Dice:", dice)
                 # sumdice += dice
@@ -144,7 +137,7 @@ class Dice():
         
         # pdb.set_trace()
         
-        m_Dice = np.array(m_Dice).sum(axis=1) / (np.array(m_Dice) != 0).sum(axis=1)
+        m_Dice = np.array(m_Dice).sum(axis=1) / ((np.array(m_Dice) != 0).sum(axis=1) + 1e-12)
 
         # print("Total mDice:", m_Dice)
         return list(m_Dice)
