@@ -110,8 +110,8 @@ class Dice():
             #assert gen_mask_cate.shape[0] == gt_mask_cate.shape[0] == len(location_list)
             if (gt_mask_cate.shape[0] != 0):
                 # organ_num += 1
-                dice = torchmetrics.functional.dice(gen_mask_cate, gt_mask_cate)
-                # dice = dice_coefficient(gt_mask_cate, gen_mask_cate)
+                # dice = torchmetrics.functional.dice(gen_mask_cate, gt_mask_cate)
+                dice = dice_coefficient(gt_mask_cate, gen_mask_cate)
                 if self.verbose:
                     print("Organ:", i, "Dice:", dice)
                 # sumdice += dice
