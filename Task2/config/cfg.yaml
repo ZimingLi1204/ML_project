@@ -21,6 +21,7 @@ train:
   loss: 'MSE'
   weight_list: [20, 1]
   iou_scale: 0
+  multimask: 
 
   lr_decay: False
   lr_schedular: StepLR
