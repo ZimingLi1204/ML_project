@@ -1,5 +1,6 @@
 import torch.nn as nn
 import pdb
+import torch
 
 class multi_loss():
     def __init__(self, loss_list, weight_list):
@@ -9,7 +10,7 @@ class multi_loss():
         weight_sum = sum(weight_list)
         self.weight_list = [w / weight_sum for w in self.weight_list]
 
-    def __call__(self, logits, labels):
+    def __call__(self, logits, labels, raw=False):
 
         for i, loss_fn in enumerate(self.loss_list):
             if (i == 0):

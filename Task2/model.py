@@ -43,6 +43,7 @@ class finetune_sam():
         self.lr = cfg['train']['learning_rate']
         self.linear_warmup = cfg["train"]["linear_warmup"]
         self.lr_decay = cfg["train"]["lr_decay"]
+        self.multimask = cfg['train']['multimask']
 
         ###optimizer
         if self.optim == 'Adam':
@@ -174,7 +175,7 @@ class finetune_sam():
                     image_pe=self.sam_model.prompt_encoder.get_dense_pe(),
                     sparse_prompt_embeddings=sparse_embeddings,
                     dense_prompt_embeddings=dense_embeddings,
-                    multimask_output=True,
+                    multimask_output=self.multimask,
                 )
 
                 #mask
@@ -186,13 +187,32 @@ class finetune_sam():
                 # iou = torch.sum(binary_mask * gt_mask.unsqueeze(1), dim=(-1, -2))
                 # _, max_idx = torch.max(iou, dim=1)
                 # binary_mask = 
-                
-                if self.loss == 'MSE':
-                    mask_loss = self.loss_fn(binary_mask, gt_mask)
+                # pdb.set_trace()
+                if self.multimask is not None :
+                    if self.loss == 'MSE':
+                        mask_loss = torch.zeros((upscaled_masks.shape[0], upscaled_masks.shape[1]), device=self.device)
+                        for i in range(mask_loss.shape[0]):
+                            mask_loss[i, 0] = self.loss_fn(binary_mask[i, 0].unsqueeze(0), gt_mask[i])
+                            mask_loss[i, 1] = self.loss_fn(binary_mask[i, 1].unsqueeze(0), gt_mask[i])
+                            mask_loss[i, 2] = self.loss_fn(binary_mask[i, 2].unsqueeze(0), gt_mask[i])
+                    else:
+                        mask_loss = torch.zeros((upscaled_masks.shape[0], upscaled_masks.shape[1]), device=self.device)
+                        for i in range(mask_loss.shape[0]):
+                            mask_loss[i, 0] = self.loss_fn(upscaled_masks[i, 0].unsqueeze(0), gt_mask[i])
+                            mask_loss[i, 1] = self.loss_fn(upscaled_masks[i, 1].unsqueeze(0), gt_mask[i])
+                            mask_loss[i, 2] = self.loss_fn(upscaled_masks[i, 2].unsqueeze(0), gt_mask[i])
+
+                    # pdb.set_trace()
+                    if self.multimask == 'min':
+                        mask_loss, _ = torch.min(mask_loss, dim=1)
+                    else:
+                        mask_loss, _ = torch.max(mask_loss, dim=1)
+                    mask_loss = mask_loss.mean()
                 else:
-                    mask_loss = self.loss_fn(upscaled_masks, gt_mask)
-                
-                mask_loss, _ = torch.max(mask_loss, dim=1)
+                    if self.loss == 'MSE':
+                        mask_loss = self.loss_fn(binary_mask, gt_mask)
+                    else:
+                        mask_loss = self.loss_fn(upscaled_masks, gt_mask)
 
                 #iou and iou loss 
                 iou = torch.sum(binary_mask * gt_mask.unsqueeze(1), dim=[-1, -2]) / torch.sum(gt_mask.unsqueeze(1), dim=[-1, -2])

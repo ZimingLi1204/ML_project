@@ -1,12 +1,15 @@
-python main.py --group_name finetune_box --save_name bc32_weighit_decay1.e-2_adamW_samloss_20:1 \
---batch_size 32  --weight_decay 1.e-2 --optimizer AdamW --promt_type box \
---use_embedded --weight_list 20 1 --loss sam_loss \
+python main.py --group_name finetune_box --save_name bc32_wd1.e-3_adamW_samloss_1:5_lrdecay_iouloss0.05_Step1800_multimask_max \
+--batch_size 32  --weight_decay 1.e-3 --optimizer AdamW --promt_type box \
+--use_embedded --weight_list 1 5 --loss sam_loss --lr_schedular StepLR \
+--step_size 1800 --multimask max \
+--iou_scale 0.05 --log_dir log --model_root /pretrain_model \
 --gpu_id 0
 
-python main.py --group_name finetune_box --save_name bc32_wd1.e-3_adamW_samloss_1:5_lrdecay_iouloss0.05_Step1800 \
+python main.py --group_name finetune_box --save_name bc32_wd1.e-3_adamW_samloss_2:1_lrdecay_iouloss0.05_Step1800_multimask_max \
 --batch_size 32  --weight_decay 1.e-3 --optimizer AdamW --promt_type box \
---use_embedded --weight_list 1 5 --loss sam_loss --lr_schedular StepLR --step_size 1800 \
---iou_scale 0.05 --log_dir /log \
+--use_embedded --weight_list 2 1 --loss sam_loss --lr_schedular StepLR \
+--step_size 1800 --multimask max \
+--iou_scale 0.05 --log_dir log --model_root /pretrain_model \
 --gpu_id 0
 
 python main.py --group_name finetune_box --save_name bc32_wd1.e-3_adamW_samloss_1:1_lrdecay_iouloss0.05_Step1800 \
@@ -15,8 +18,8 @@ python main.py --group_name finetune_box --save_name bc32_wd1.e-3_adamW_samloss_
 --iou_scale 0.05 --log_dir /log \
 --gpu_id 0
 
-python main.py --group_name finetune_box --save_name bc32_wd1.e-3_adamW_warmup_lrdecay_iouloss0.05 \
---batch_size 32  --weight_decay 1.e-1 --optimizer AdamW --promt_type box \
+python main.py --group_name finetune_single_point --save_name bc32_wd1e-3_adamW_samloss_10:1_lrdecay_iouloss0.05_center_multimask \
+--batch_size 32  --weight_decay 1.e-3 --optimizer AdamW --promt_type box --center_point \
 --use_embedded --weight_list 20 1 --loss sam_loss --linear_warmup --lr_schedular StepLR \
 --iou_scale 0.05 \
 --gpu_id 0

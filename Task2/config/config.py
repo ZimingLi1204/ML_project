@@ -44,6 +44,7 @@ def parse_args():
     parser.add_argument('--loss', type=str, default=None)
     parser.add_argument('--weight_list', nargs='+', default=None, type=int)
     parser.add_argument('--iou_scale', default=None, type=float)
+    parser.add_argument('--multimask', type=str, default=None)
     
     # #eval
     # parser.add_argument('--eval_freq', type=int, default=None)
@@ -113,6 +114,9 @@ def process_cfg(cfg, args=None, mode = ''):
         cfg["train"]["weight_list"] = args.weight_list
     if args.iou_scale is not None:
         cfg["train"]["iou_scale"] = args.iou_scale
+
+    if args.multimask is not None:
+        cfg["train"]["multimask"] = args.multimask
 
         
     ####data
