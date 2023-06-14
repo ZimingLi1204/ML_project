@@ -164,7 +164,7 @@ class sam_classifier():
                         boxes = promt * (self.input_size[0] / self.original_image_size[0])
                     elif promt_type == 'mask':
                         masks = promt
-                    elif promt_type == 'points' or promt_type == 'single_point':
+                    elif promt_type == 'points' or promt_type == 'single_point' or promt_type == "grid_points":
                         points = promt * (self.input_size[0] / self.original_image_size[0]), promt_label
                     else:
                         raise NotImplementedError
@@ -287,7 +287,7 @@ class sam_classifier():
                     boxes = promt * (self.input_size[0] / self.original_image_size[0])
                 elif promt_type == 'mask':
                     masks = promt
-                elif promt_type == 'points' or promt_type == 'single_point':
+                elif promt_type == 'points' or promt_type == 'single_point' or promt_type == "grid_points":
                     points = promt * (self.input_size[0] / self.original_image_size[0]), promt_label
                 else:
                     raise NotImplementedError                    
@@ -403,7 +403,7 @@ class sam_classifier():
                     boxes = promt * (self.input_size[0] / self.original_image_size[0])
                 elif promt_type == 'mask':
                     masks = promt
-                elif promt_type == 'points' or promt_type == 'single_point':
+                elif promt_type == 'points' or promt_type == 'single_point' or promt_type == "grid_points":
                     points = promt * (self.input_size[0] / self.original_image_size[0]), promt_label
                 else:
                     raise NotImplementedError                    

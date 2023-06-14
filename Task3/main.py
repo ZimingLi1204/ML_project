@@ -49,7 +49,7 @@ if __name__ == '__main__':
     else:
         print("#####Loading train data#######")
         train_dataset, val_dataset = classifier_load_data_train(cfg)
-        train_dataloader = DataLoader(train_dataset, batch_size=cfg['train']['batch_size'], shuffle=True, num_workers=0)
+        train_dataloader = DataLoader(train_dataset, batch_size=cfg['train']['batch_size'], shuffle=True, num_workers=0 )
         # val_dataloader = DataLoader(val_dataset, batch_size=cfg['test']['batch_size'], shuffle=False, num_workers=4)
         info = {"name": val_dataset.name, "category": val_dataset.category}
         metrics = Dice(mask_gt=val_dataset.mask, info_gt=info)

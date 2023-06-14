@@ -6,8 +6,8 @@ device_id: 0
 
 train:
   use_tensorboard: True
-  log_dir: '/home/xuyichen/data/ML_project/Task3/log_together/try3'
-  checkpoints_dir: "checkpoints"
+  log_dir: '/home/xuyichen/data/ML_project/Task3/log_together/grid'
+  checkpoints_dir: "checkpoints/grid"
   group: 'debug'
   save_name: 'debug'
   learning_rate: 1.e-4
@@ -32,7 +32,7 @@ model:
   model_root: ../pretrain_model
   model_type: vit_h
   load_decoder: True
-  decoder_path: ../finetune_model/box_8605.pth
+  decoder_path: ../finetune_model/grid_points_24_8345.pth
   load_classifier: False
   classifier_path: ../finetune_model/mask_decoder_epoch42-0.7911.pth
   classifier_type: cnn
@@ -50,7 +50,7 @@ data:
 
      
 promt:
-  promt_type: "box"
+  promt_type: "grid_points"
   center_point: False
   point_num: 16
   point_size: 16

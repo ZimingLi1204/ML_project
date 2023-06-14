@@ -57,7 +57,7 @@ class Maskdataset(Dataset):
 
         # img = torch.from_numpy(self.img[index]).float()
         # mask = torch.from_numpy(self.mask[index]).float()
-        promt = get_promt(self.img[index], self.mask[index], promt_type='box').astype(np.float32)
+        promt = get_promt(self.img[index], self.mask[index], promt_type=cfg["promt"]["promt_type"]).astype(np.float32)
         data_merge = self.data_merge[index]
         category = self.category[0][index]
         return data_merge, category, promt
@@ -71,7 +71,7 @@ class CNN(nn.Module):
 
         # block 1
         #net.append(nn.MaxPool2d(kernel_size=2, stride=2))
-        self.conv1 = nn.Conv2d(in_channels=2, out_channels=4, padding=1, kernel_size=3, stride=1)
+        self.conv1 = nn.Conv2d(in_channels=2, out_channels=4, padding=1, kernel_size=3, stride=2)
         nn.init.kaiming_normal_(self.conv1.weight)
         img_net.append(self.conv1)
         img_net.append(nn.BatchNorm2d(4))
@@ -125,19 +125,19 @@ class CNN(nn.Module):
         
         self.fc1 = nn.Linear(in_features=1024*8*8, out_features=16*8*8)
         nn.init.kaiming_normal_(self.fc1.weight)
-        self.fc2 = nn.Linear(in_features=16*8*8, out_features=16)
+        self.fc2 = nn.Linear(in_features=16*8*8, out_features=self.num_classes)
         nn.init.kaiming_normal_(self.fc2.weight)
         img_net.append(nn.Flatten())
         img_net.append(self.fc1)
         img_net.append(self.fc2)
         self.img_net = nn.Sequential(*img_net)
         
-        classifier = []
-        self.fc3 = nn.Linear(in_features=20, out_features=self.num_classes)
-        nn.init.kaiming_normal_(self.fc3.weight)
-        classifier.append(self.fc3)
-        #classifier.append(nn.Softmax())
-        self.classifier = nn.Sequential(*classifier)
+        # classifier = []
+        # self.fc3 = nn.Linear(in_features=20, out_features=self.num_classes)
+        # nn.init.kaiming_normal_(self.fc3.weight)
+        # classifier.append(self.fc3)
+        # classifier.append(nn.Softmax())
+        # self.classifier = nn.Sequential(*classifier)
         
         '''
         net.append(nn.Conv2d(in_channels=8, out_channels=8, padding=1, kernel_size=3, stride=1))
@@ -177,9 +177,8 @@ class CNN(nn.Module):
         # shape = (32, )
         
         # x = torch.cat((feat, prompt), dim=1)
-        x = feat
         
-        return self.classifier(x)
+        return feat
 
     def test(self, val_dataloader, bs):
 
@@ -197,11 +196,10 @@ class CNN(nn.Module):
                 for index in range(len(gt_category)):
                     if (pred_category[index] == gt_category[index]):
                         acc += 1
-        # pdb.set_trace()
 
         acc = acc / (len(val_dataloader) * bs)
         loss = loss / len(val_dataloader)
-        
+
 
         return acc, loss.detach().cpu()
 
