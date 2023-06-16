@@ -15,7 +15,7 @@ from utils.pytorch_loss.soft_dice_loss import SoftDiceLossV2
 from utils.loss import multi_loss
 from utils.metrics import dice_coefficient
 from torch.optim.lr_scheduler import LinearLR, StepLR
-from utils.visualize import mask_visualize
+from utils.visualize import visualize
 
 class Mysam(Sam):
     def __init__(self) -> None:
@@ -343,6 +343,9 @@ class finetune_sam():
         iou_all = []
         mask_all = np.zeros([len(dataset), self.original_image_size[0], self.original_image_size[1]], dtype=np.int8)
 
+        #for visualize
+        visual = visualize()
+
         pbar = tqdm(range(len(dataset)), ncols=90, desc="eval", position=0)
         for i in pbar:
 
@@ -414,7 +417,12 @@ class finetune_sam():
                 iou_all.append(iou_predictions.cpu())
                 mask_all[i] = (binary_mask.cpu())
 
-        
+                pdb.set_trace()
+                visual.mask_visualize(
+                    gt_mask.cpu().numpy(), mask_all[i], promt.cpu().numpy(), promt_type, i
+                )
+
+
         loss_all = np.array(loss_all).mean() 
         iou_all = torch.cat(iou_all).mean().item()
         mDice = metrics.eval_data_processing(6, mask_all)
