@@ -151,8 +151,8 @@ def process_cfg(cfg, args=None, mode = ''):
     
     ###save name and dir
     if args.ckpt_path is not None:
-        cfg['train']['decoder_path'] = args.ckpt_path
-        cfg["train"]["load_decoder"] = True
+        cfg['model']['decoder_path'] = args.ckpt_path
+        cfg["model"]["load_decoder"] = True
     if args.log_dir is not None:
         cfg['train']['log_dir'] = args.log_dir
     if args.group_name is not None:

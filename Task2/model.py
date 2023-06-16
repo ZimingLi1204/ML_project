@@ -15,7 +15,7 @@ from utils.pytorch_loss.soft_dice_loss import SoftDiceLossV2
 from utils.loss import multi_loss
 from utils.metrics import dice_coefficient
 from torch.optim.lr_scheduler import LinearLR, StepLR
-
+from utils.visualize import mask_visualize
 
 class Mysam(Sam):
     def __init__(self) -> None:
@@ -87,7 +87,9 @@ class finetune_sam():
         print("finish initialize model class")
 
     def load_model(self, cfg):
+        # pdb.set_trace()
         if cfg["model"]["load_decoder"]:
+            print("load model from " , cfg["model"]["decoder_path"])
             self.sam_model.mask_decoder.load_state_dict(torch.load(cfg["model"]["decoder_path"]))
 
     def train(self, dataloader, val_dataset, metrics=None):

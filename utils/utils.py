@@ -142,7 +142,7 @@ def get_promt(
             
     elif promt_type == "grid_points":  # 格点 + 中心点
 
-        step = 512 // point_num
+        step = mask.shape[0] // point_num
         index_mask = np.zeros_like(mask)
         index_mask[np.arange(mask.shape[0]) % step == 0] = 1
         index_mask[0] = 0

@@ -1,4 +1,4 @@
-random_seed: 9999
+random_seed: 1412
 debug: False
 # use_wandb: False
 device: cuda
