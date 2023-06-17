@@ -24,7 +24,7 @@ class visualize():
         test_set = np.load("/BTCV_testset/pre_processed_dataset1_test.npz")
         self.test_img = test_set["img"]
         # self.visualize_list = [i * 100 for i in range(23)]
-        self.visualize_list = [1700]
+        self.visualize_list = [i * 100 for i in range(23)]
         self.data_root = '../img/' + promt_type
         if not os.path.exists(self.data_root):
             os.mkdir(self.data_root)
@@ -129,15 +129,18 @@ class visualize():
 
 if __name__ == '__main__':
     root = "/root/autodl-tmp/ML_project/img"
-    promt = ['box', 'grid_points', 'points', 'single_point']
+    promt = ['box', 'grid_points_24', 'grid_points_16', 'grid_points_12', 'points', 'points_center', 'single_point_center', 'single_point']
+    l = len(promt)
     d = 512
     s = 20
-    imgs = np.ones((d * 4 + s * 3, d * 4 + s * 3, 3)) * 255
-    for i, p in enumerate(promt):
-        path = os.path.join(root, p, '1700', 'all.png')
-        imgs[(i) * d + (i) * s: (i+1)*d + (i) * s] = imageio.v2.imread(path)
+    from tqdm import tqdm
+    for j in tqdm([j*100 for j in range(23)], ncols=90):
+        imgs = np.ones((d * l + s * (l-1), d * 4 + s * 3, 3)) * 255
+        for i, p in enumerate(promt):
+            path = os.path.join(root, p, str(j), 'all.png')
+            imgs[(i) * d + (i) * s: (i+1)*d + (i) * s] = imageio.v2.imread(path)
 
-    imageio.imwrite(
-            root + "/all.png",
-            imgs.astype(np.uint8)
-    )
+        imageio.imwrite(
+                root + "/all_{}.png".format(j),
+                imgs.astype(np.uint8)
+        )

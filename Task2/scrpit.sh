@@ -60,18 +60,18 @@ python main.py --group_name test --save_name test \
 --gpu_id 0 --test --data_root /BTCV_testset --model_root /pretrain_model 
 
 python main.py --group_name test --save_name test \
---use_embedded --promt_type points \
---ckpt_path /root/autodl-tmp/ML_project/decoder_checkpoint/points_8438.pth \
+--use_embedded --promt_type points --center_point \
+--ckpt_path /root/autodl-tmp/ML_project/decoder_checkpoint/points_center_8110.pth \
 --gpu_id 0 --test --data_root /BTCV_testset --model_root /pretrain_model 
 
 python main.py --group_name test --save_name test \
---use_embedded --promt_type grid_points --point_num 24 \
---ckpt_path /root/autodl-tmp/ML_project/decoder_checkpoint/grid_points_24_8383.pth \
+--use_embedded --promt_type grid_points --point_num 12 \
+--ckpt_path /root/autodl-tmp/ML_project/decoder_checkpoint/grid_points_12_7788.pth \
 --gpu_id 0 --test --data_root /BTCV_testset --model_root /pretrain_model 
 
 python main.py --group_name test --save_name test \
---use_embedded --promt_type single_point --center_point \
---ckpt_path /root/autodl-tmp/ML_project/decoder_checkpoint/single_point_center_7348.pth \
+--use_embedded --promt_type single_point \
+--ckpt_path /root/autodl-tmp/ML_project/decoder_checkpoint/single_point_6817.pth \
 --gpu_id 0 --test --data_root /BTCV_testset --model_root /pretrain_model 
 
 

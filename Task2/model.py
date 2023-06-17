@@ -344,7 +344,7 @@ class finetune_sam():
         mask_all = np.zeros([len(dataset), self.original_image_size[0], self.original_image_size[1]], dtype=np.int8)
 
         #for visualize
-        # visual = visualize(self.cfg['promt']['promt_type'])
+        visual = visualize(self.cfg['promt']['promt_type'])
 
         pbar = tqdm(range(len(dataset)), ncols=90, desc="eval", position=0)
         for i in pbar:
