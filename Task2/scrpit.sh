@@ -54,18 +54,25 @@ python main.py --group_name finetune_grid_points --save_name bc16_wd1e-3_adamW_s
 --gpu_id 0 
 
 ###test
-python main.py --group_name debug --save_name test_promt \
---use_embedded --promt_type box --center_point \
+python main.py --group_name test --save_name test \
+--use_embedded --promt_type box \
+--ckpt_path /root/autodl-tmp/ML_project/decoder_checkpoint/box_8643.pth \
 --gpu_id 0 --test --data_root /BTCV_testset --model_root /pretrain_model 
 
 python main.py --group_name test --save_name test \
---use_embedded --promt_type grid_points --point_num 12 \
---ckpt_path log/finetune_grid_points/bc16_wd1e-3_adamW_samloss_1:1_lrdecay_StepLR2000_iouloss0.05_12points_multimask_max/9.pth \
+--use_embedded --promt_type points \
+--ckpt_path /root/autodl-tmp/ML_project/decoder_checkpoint/points_8438.pth \
 --gpu_id 0 --test --data_root /BTCV_testset --model_root /pretrain_model 
 
-python main.py --group_name debug --save_name debug \
---batch_size 2 --weight_decay 0 --use_embedded \
---gpu_id 0 
+python main.py --group_name test --save_name test \
+--use_embedded --promt_type grid_points --point_num 24 \
+--ckpt_path /root/autodl-tmp/ML_project/decoder_checkpoint/grid_points_24_8383.pth \
+--gpu_id 0 --test --data_root /BTCV_testset --model_root /pretrain_model 
+
+python main.py --group_name test --save_name test \
+--use_embedded --promt_type single_point --center_point \
+--ckpt_path /root/autodl-tmp/ML_project/decoder_checkpoint/single_point_center_7348.pth \
+--gpu_id 0 --test --data_root /BTCV_testset --model_root /pretrain_model 
 
 
 box 86.05 /log/finetune_box/bc32_wd1.e-3_adamW_samloss_2:1_lrdecay_iouloss0.05/12.pth (step_size 1800)

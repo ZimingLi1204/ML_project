@@ -344,7 +344,7 @@ class finetune_sam():
         mask_all = np.zeros([len(dataset), self.original_image_size[0], self.original_image_size[1]], dtype=np.int8)
 
         #for visualize
-        visual = visualize()
+        # visual = visualize(self.cfg['promt']['promt_type'])
 
         pbar = tqdm(range(len(dataset)), ncols=90, desc="eval", position=0)
         for i in pbar:
@@ -417,10 +417,10 @@ class finetune_sam():
                 iou_all.append(iou_predictions.cpu())
                 mask_all[i] = (binary_mask.cpu())
 
-                pdb.set_trace()
-                visual.mask_visualize(
-                    gt_mask.cpu().numpy(), mask_all[i], promt.cpu().numpy(), promt_type, i
-                )
+                # 
+                # visual.mask_visualize(
+                #     gt_mask.squeeze().cpu().numpy(), mask_all[i], promt.squeeze().cpu().numpy(), promt_type, i
+                # )
 
 
         loss_all = np.array(loss_all).mean() 
