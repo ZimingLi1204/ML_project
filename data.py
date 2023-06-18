@@ -87,7 +87,7 @@ class Mydataset(Dataset):
         promt_type = self.promt_type
 
         mask = self.mask[index]
-        promt = get_promt(mask, promt_type, point_num = self.point_num, center_point=self.center_point, point_size=self.point_size)
+        promt = get_promt(img, mask, promt_type, point_num = self.point_num, center_point=self.center_point, point_size=self.point_size)
         if isinstance(promt, tuple):
             promt, promt_label = promt
             
