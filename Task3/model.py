@@ -118,7 +118,7 @@ class sam_classifier():
 
             ###save model
             if epoch > 0:
-                torch.save(self.sam_model.mask_decoder.state_dict(), self.checkpoints_dir + '/' + 'mask_decoder_epoch{}.pth'.format(epoch))
+                # torch.save(self.sam_model.mask_decoder.state_dict(), self.checkpoints_dir + '/' + 'mask_decoder_epoch{}.pth'.format(epoch))
                 torch.save(self.classifier.state_dict(), self.checkpoints_dir + '/' + '{}_epoch_{}.pth'.format(self.classifier_type, epoch))
                 
             ###eval end###
@@ -349,31 +349,44 @@ class sam_classifier():
         acc = acc / len(dataset)
         
         print("val mDice:", np.array(mDice).mean())
-
+        print("val acc", acc)
+        
         self.sam_model.train()
         self.classifier.train()
 
         return np.array(mDice).mean(), loss_all, iou_all, acc
 
+
+
     def test(self, dataset, metrics=None):
-
+        
+        # load model weights
+        self.sam_model.mask_decoder.load_state_dict(torch.load(self.cfg["model"]["decoder_path"]))
+        classifier_path = self.cfg["model"]["classifier_path"]
+        self.classifier.load_state_dict(torch.load(classifier_path), strict = True)
+            
         self.sam_model.eval()
+        self.classifier.eval()
 
-        ###调用task1的test 函数
+        ###调用task1中的val函数
+        acc = 0
         loss_all = []
         iou_all = []
         mask_all = np.zeros([len(dataset), self.original_image_size[0], self.original_image_size[1]], dtype=np.int8)
 
         pbar = tqdm(range(len(dataset)), ncols=90, desc="eval", position=0)
         for i in pbar:
-
-            img, gt_mask, promt, promt_label, promt_type = dataset[i]
-
+            
+            img, image_embedding, gt_mask, promt, promt_label, promt_type, category, data_merge = dataset[i]
+            
             ###change format and device
             img = torch.from_numpy(img).to(self.device).unsqueeze(0).float()
             gt_mask = torch.from_numpy(gt_mask).to(self.device).unsqueeze(0).float()
             promt = torch.from_numpy(promt).to(self.device).unsqueeze(0)
+            # data_merge = torch.from_numpy(data_merge).to(self.device).unsqueeze(0)
+            category = torch.Tensor(category).long().to(self.device) #.unsqueeze(0)
             
+            # pdb.set_trace()
             if torch.is_tensor(promt_label):
                 promt_label = promt_label.to(self.device).unsqueeze(0)
             elif type(promt_label) is np.ndarray:
@@ -385,7 +398,7 @@ class sam_classifier():
             with torch.no_grad():
                 
                 if self.use_embedded:
-                    image_embedding = img
+                    image_embedding = torch.from_numpy(image_embedding).to(self.device).unsqueeze(0)
                 else:
                     img = img.unsqueeze(1)
                     input_img = self.transform.apply_image_torch(img)#把最长边resize成1024, 短边padding
@@ -395,7 +408,7 @@ class sam_classifier():
                 
                 ###构建promt
                 points, boxes, masks = None, None, None
-                # pdb.set_trace()
+                
                 if isinstance(promt_type, tuple):
                     promt_type = promt_type[0]
 
@@ -425,24 +438,46 @@ class sam_classifier():
 
                 #mask
                 upscaled_masks = self.sam_model.postprocess_masks(low_res_masks, self.input_size, self.original_image_size).to(self.device)
-                binary_mask = normalize(threshold(upscaled_masks, 0.0, 0)).to(self.device).squeeze() #低于0的扔掉, 高于0的除最大值normalize到1
+                binary_mask = normalize(threshold(upscaled_masks, 0.0, 0)).to(self.device).squeeze() #低于0的扔掉, 高于0normalize到1
 
+                data_merge = torch.cat([binary_mask.detach().reshape(-1, 1, 512, 512), img.reshape(-1, 1, 512, 512)], dim=1)
+                data_merge = data_merge.reshape(-1, 2, 512, 512)
+                
+                
+                # classification
+                category_result = self.classifier(data_merge, promt)
+                
+                pred_category = torch.argmax(category_result, dim=1)
+                # print(pred_category.shape, pred_category[0], category[0], "pre_catye\n")
+                if (pred_category[0] == category[0]):
+                    acc += 1
+                
                 #loss                
-                loss = self.loss_fn(binary_mask.squeeze(), gt_mask.squeeze())
-
+                if self.loss == 'MSE':
+                    loss = self.loss_fn(binary_mask, gt_mask)
+                else:
+                    loss = self.loss_fn(upscaled_masks, gt_mask)
+                # print(category_result.shape, category.shape)
+                # print(category_result)
+                # print(category)
+                loss = loss + self.lambda_classifier*self.classifier_loss_fn(category_result, category)
+                    
+                ###iou
+                iou = (binary_mask * gt_mask).sum() / gt_mask.sum()
+                
                 ###汇总
                 loss_all.append(loss.cpu().item())
-                iou_all.append(iou_predictions.cpu())
+                iou_all.append(iou.cpu().item())
                 mask_all[i] = (binary_mask.cpu())
 
-        
-        loss_all = np.array(loss_all).mean() 
-        iou_all = torch.cat(iou_all).mean().item()
-        mDice = metrics.eval_data_processing(6, mask_all)
-        print("test mDice:", mDice)
-        print("test mDice mean:", np.mean(np.array(mDice)))
-        print("test loss:", loss_all)
-        print("test iou:", iou_all)
-        
-        return np.array(mDice).mean(), loss_all, iou_all
 
+        loss_all = np.array(loss_all).mean() 
+        # pdb.set_trace()
+        iou_all = np.array(iou_all).mean()
+        mDice = metrics.eval_data_processing(6, mask_all)
+        acc = acc / len(dataset)
+        
+        print("test mDice:", np.array(mDice).mean())
+        print("test acc", acc)
+        
+        return np.array(mDice).mean(), loss_all, iou_all, acc

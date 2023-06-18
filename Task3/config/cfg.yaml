@@ -2,12 +2,12 @@ random_seed: 9999
 debug: False
 # use_wandb: False
 device: cuda
-device_id: 0
+device_id: 1
 
 train:
   use_tensorboard: True
-  log_dir: '/home/xuyichen/data/ML_project/Task3/log_together/grid'
-  checkpoints_dir: "checkpoints/grid"
+  log_dir: '/home/xuyichen/data/ML_project/Task3/log_together/points_centered'
+  checkpoints_dir: "checkpoints/points"
   group: 'debug'
   save_name: 'debug'
   learning_rate: 1.e-4
@@ -25,21 +25,21 @@ train:
   
 
 test:
-  test: False
+  test: True
   batch_size: 1
 
 model:
   model_root: ../pretrain_model
   model_type: vit_h
   load_decoder: True
-  decoder_path: ../finetune_model/grid_points_24_8345.pth
-  load_classifier: False
-  classifier_path: ../finetune_model/mask_decoder_epoch42-0.7911.pth
+  decoder_path: ../finetune_model/points_center_7860.pth
+  load_classifier: True
+  classifier_path: ../finetune_model/pointscenter2.pth
   classifier_type: cnn
 
 data:
   data_root: "../BTCV_dataset1"
-  promt_type: "box"
+  promt_type: “points"
   split_ratio: 0.2
   img_size: [512, 512]
   input_size: [1024, 1024]
@@ -50,7 +50,7 @@ data:
 
      
 promt:
-  promt_type: "grid_points"
-  center_point: False
+  promt_type: "points"
+  center_point: True
   point_num: 16
   point_size: 16
