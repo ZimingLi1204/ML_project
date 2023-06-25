@@ -8,9 +8,9 @@ follow installation guidance in segment-anything project
 * CUDA capable GPU (one is enough)
 
 # Preparation
-* download model weights in './pre_train/'
+* download model weights in `./pre_train/`
 
-download data for train and test in ./BTCV/
+* download data for train and test in `./BTCV/`
 
 # Task1
 <details>
