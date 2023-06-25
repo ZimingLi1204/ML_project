@@ -2,7 +2,7 @@
 PKU machine learning project 2023 spring
 
 # Installation
-##follow installation guidance in [segment-anything project](https://github.com/facebookresearch/segment-anything)##
+# follow installation guidance in [segment-anything](https://github.com/facebookresearch/segment-anything) project. ##
 * python 3.7
 * pytorch 1.7.1
 * CUDA capable GPU (one is enough)
