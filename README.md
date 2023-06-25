@@ -13,15 +13,14 @@ PKU machine learning project 2023 spring
 * download data for train and test in `./BTCV/`
 
 # Task1
-<details>
-  <summary><b>Zero-shot test</b></summary>
+**Zero-shot performance on test set**
 
-```bash
+`
 cd Task2
-python main.py --promt_type box
-```
+python main.py --promt_type box --test
+`
 </details>
-##you can also modify this options in Task2/config/cfg.yaml##
+**you can also modify these options in Task2/config/cfg.yaml**
 
 # Task2
 
