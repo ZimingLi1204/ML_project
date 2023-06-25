@@ -8,9 +8,11 @@ PKU machine learning project 2023 spring
 * CUDA capable GPU (one is enough)
 
 # Preparation
-* download model weights in `./pre_train/`
+**download preprocessed CT data and fine-tuned model weights from this link**
 
-* download data for train and test in `./BTCV/`
+* place model weights in `./pre_train/`
+
+* place data for train and test in `./BTCV/`
 
 # Task1
 **Zero-shot performance on test set**
