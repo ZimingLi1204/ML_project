@@ -14,12 +14,14 @@ PKU machine learning project 2023 spring
 
 # Task1
 **Zero-shot performance on test set**
+`cd Task2`
+`python main.py --promt_type box --test`
+**You may also define:**
+* `--device_id` id.
+* `--seed` random seed.
+* `--center_point` choose center point prompt or random choose point prompt
+* 
 
-`
-cd Task2
-python main.py --promt_type box --test
-`
-</details>
 **you can also modify these options in Task2/config/cfg.yaml**
 
 # Task2
